@@ -1,0 +1,22 @@
+{
+  "name": "de.macromedia.gec1",
+  "version": "0.1.0",
+  "displayName": "GEC1 Kurs-Paket",
+  "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen).",
+  "unity": "2021.3",
+  "author": {
+    "name": "Jonas Heinke"
+  },
+  "license": "MIT",
+  "documentationUrl": "https://www.allknivesnobagel.com/teaching/gec1/guides/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BabyToad/macromedia-gec1-kit.git"
+  },
+  "keywords": [
+    "course",
+    "macromedia",
+    "gec1"
+  ],
+  "dependencies": {}
+}
