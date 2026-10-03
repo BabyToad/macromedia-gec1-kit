@@ -1,9 +1,9 @@
 {
   "name": "de.macromedia.gec1",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "GEC1 Kurs-Paket",
-  "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen).",
-  "unity": "2021.3",
+  "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen), Spieler-Controller (Prefab Spieler).",
+  "unity": "6000.3",
   "author": {
     "name": "Jonas Heinke"
   },
@@ -18,5 +18,9 @@
     "macromedia",
     "gec1"
   ],
-  "dependencies": {}
+  "dependencies": {
+    "com.unity.inputsystem": "1.20.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.physics": "1.0.0"
+  }
 }

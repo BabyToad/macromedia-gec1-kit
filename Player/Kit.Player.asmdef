@@ -1,0 +1,6 @@
+{
+    "name": "Kit.Player",
+    "rootNamespace": "Kit",
+    "references": ["Unity.InputSystem"],
+    "autoReferenced": true
+}

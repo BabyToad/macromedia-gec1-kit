@@ -11,7 +11,7 @@ namespace Gec1.SetupCheck
         public const string Template = "Universal 3D";
         public const string HandIn = "2027-01-22";
         public const string KitPackage = "de.macromedia.gec1";
-        public const string KitVersion = "0.1.0";
+        public const string KitVersion = "0.2.0";
         public static readonly string[] RequiredPackages =
         {
             "com.unity.render-pipelines.universal",
