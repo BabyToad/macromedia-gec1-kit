@@ -25,6 +25,9 @@ namespace Kit.Editor
     [InitializeOnLoad]
     public static partial class KitGtkBridge
     {
+        /// <summary>Extra console lines about selection highlighting (set by the studio's screenshot driver).</summary>
+        internal static bool Verbose;
+
         const BindingFlags k_Any = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         static readonly Type s_ModelView = Type.GetType("Unity.GraphToolkit.Editor.ModelView, Unity.GraphToolkit.Internal.Editor");
         static readonly Type s_GraphElement = Type.GetType("Unity.GraphToolkit.Editor.GraphElement, Unity.GraphToolkit.Internal.Editor");

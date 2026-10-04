@@ -503,7 +503,7 @@ namespace Kit.Editor
                 if (it) { KitInstances.Select(Path, it); return; }
                 var inst = Instance;
                 if (inst) m_HighlightSlots = new HashSet<string>(KitBinding.SlotsUsing(inst, go));
-                if (KitTrace.LogToConsole || Dev.KitShots.Verbose) Debug.Log($"[Kit] Auswahl {go.name}: inst={(inst ? inst.name : "-")} slots={string.Join(",", m_HighlightSlots)}");
+                if (KitTrace.LogToConsole || KitGtkBridge.Verbose) Debug.Log($"[Kit] Auswahl {go.name}: inst={(inst ? inst.name : "-")} slots={string.Join(",", m_HighlightSlots)}");
             }
 
             // ---------------------------------------------------------------------------- creating nodes

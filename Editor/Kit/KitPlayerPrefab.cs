@@ -6,11 +6,32 @@ namespace Kit.Editor
     /// <summary>Builds the kit's player prefab: CharacterController, KitPlayer, head pivot, camera.</summary>
     public static class KitPlayerPrefab
     {
-        public const string Path = "Assets/Kit/Player/Spieler.prefab";
+        /// <summary>GUID of the shipped Player/Spieler.prefab (stable: the package keeps the .meta files).</summary>
+        public const string Guid = "c689fda3acbe5a6419b1e48ea86ebdad";
+        const string StudioPath = "Assets/Kit/Player/Spieler.prefab";
+
+        /// <summary>Where the shipped prefab is (package or studio project), or null if it is missing.</summary>
+        public static string ShippedPath => KitPaths.ByGuid(Guid);
+
+        /// <summary>
+        /// Where "Spieler-Prefab bauen" writes: over the shipped prefab when that is writable (studio project),
+        /// otherwise into the project's own folder – never into the read-only package.
+        /// </summary>
+        public static string Path
+        {
+            get
+            {
+                var shipped = ShippedPath;
+                if (KitPaths.IsWritable(shipped)) return shipped;
+                return KitPaths.FromPackage ? KitPaths.StudentFolder + "/Spieler.prefab" : StudioPath;
+            }
+        }
 
         [MenuItem("Tools/Kit/Spieler-Prefab bauen")]
         public static GameObject Build()
         {
+            var path = Path;
+            KitPaths.EnsureFolder(System.IO.Path.GetDirectoryName(path).Replace('\\', '/'));
             var root = new GameObject("Spieler") { tag = "Player" };
             var cc = root.AddComponent<CharacterController>();
             cc.center = new Vector3(0, 1, 0); cc.height = 2f; cc.radius = 0.4f;
@@ -46,12 +67,18 @@ namespace Kit.Editor
             follow.player = player;
             follow.hideInFirstPerson = new Renderer[] { bodyVisual.GetComponent<Renderer>(), visor.GetComponent<Renderer>() };
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(root, Path);
+            var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
             Object.DestroyImmediate(root);
-            Debug.Log("[Kit] Spieler-Prefab: " + Path);
+            Debug.Log("[Kit] Spieler-Prefab: " + path);
             return prefab;
         }
 
-        public static GameObject Load() => AssetDatabase.LoadAssetAtPath<GameObject>(Path) ?? Build();
+        /// <summary>The shipped prefab; else one built earlier in the project; else a freshly built one.</summary>
+        public static GameObject Load()
+        {
+            var shipped = ShippedPath;
+            if (shipped != null) return AssetDatabase.LoadAssetAtPath<GameObject>(shipped);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(Path) ?? Build();
+        }
     }
 }

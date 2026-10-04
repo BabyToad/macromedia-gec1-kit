@@ -9,7 +9,8 @@ namespace Kit.Editor
     /// <summary>Builds the course example "Schlüssel und Tür": the graph (as a student would draw it) and a small scene.</summary>
     public static class KitDemo
     {
-        public const string Folder = "Assets/Kit/Demo";
+        /// <summary>Studio project: next to the kit (Assets/Kit/Demo). Student project (kit as package): Assets/Kit Beispiel.</summary>
+        public static string Folder => KitPaths.FromPackage ? KitPaths.StudentFolder : "Assets/Kit/Demo";
         public static string GraphPath => Folder + "/Schlüssel und Tür.kit";
         public static string ScenePath => Folder + "/Keller.unity";
 
@@ -48,7 +49,7 @@ namespace Kit.Editor
         [MenuItem("Tools/Kit/Beispiel „Schlüssel und Tür“ bauen")]
         public static void BuildAll()
         {
-            if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Kit", "Demo");
+            KitPaths.EnsureFolder(Folder);                         // jede fehlende Ebene; nie in Packages
             var graph = File.Exists(GraphPath) ? AssetDatabase.LoadAssetAtPath<KitGraph>(GraphPath) : BuildKeyDoorGraph(GraphPath);
             var clip = WriteClick(Folder + "/Tür-Klack.wav");
 
