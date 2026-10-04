@@ -1,0 +1,10 @@
+{
+    "name": "Kit.Runtime",
+    "rootNamespace": "Kit",
+    "references": ["Unity.TextMeshPro", "Unity.InputSystem"],
+    "autoReferenced": true,
+    "versionDefines": [
+        { "name": "com.unity.inputsystem", "expression": "1.0.0", "define": "KIT_INPUTSYSTEM" },
+        { "name": "com.unity.ugui", "expression": "2.0.0", "define": "KIT_TMP" }
+    ]
+}

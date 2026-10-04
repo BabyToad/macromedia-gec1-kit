@@ -1,0 +1,6 @@
+{
+    "name": "Kit.Extensions",
+    "rootNamespace": "Kit",
+    "references": ["Kit.Runtime"],
+    "autoReferenced": true
+}

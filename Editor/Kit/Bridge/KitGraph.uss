@@ -1,0 +1,122 @@
+/* Kit: course blackboard look for the Graph Toolkit canvas (direction A, slate green) */
+.ge-graph-view GridBackground {
+    background-color: #1c2a26;
+    --line-color: rgba(239, 234, 219, 0.045);
+    --thick-line-color: rgba(239, 234, 219, 0.10);
+}
+
+.kit-extras {
+    flex-direction: column;
+    padding: 2px 6px 4px 6px;
+    border-top-width: 1px;
+    border-color: rgba(0, 0, 0, 0.35);
+    background-color: rgba(0, 0, 0, 0.18);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.kit-chip {
+    margin: 1px 0;
+    min-width: 170px;
+}
+
+.kit-chip > Label {
+    min-width: 64px;
+    color: #5fd0b5;
+}
+
+.kit-chip--empty .unity-object-field__input {
+    border-color: #ff6b5e;
+}
+
+.kit-state {
+    -unity-font-style: normal;
+    font-size: 11px;
+    white-space: normal;
+    max-width: 260px;
+    color: #9a9a9a;
+}
+
+.kit-code {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    font-size: 10px;
+    padding: 0 3px;
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-width: 0;
+    color: #bdbdbd;
+}
+
+.kit-glow {
+    position: absolute;
+    left: -4px; right: -4px; top: -4px; bottom: -4px;
+    border-width: 3px;
+    border-radius: 9px;
+}
+
+.kit-order {
+    position: absolute;
+    background-color: #f0a830;
+    color: #1b1b1b;
+    -unity-font-style: bold;
+    font-size: 11px;
+    border-radius: 8px;
+    padding: 0 5px;
+    min-width: 16px;
+    -unity-text-align: middle-center;
+}
+
+.kit-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 22px;
+    padding: 4px 8px;
+    background-color: rgba(18, 26, 23, 0.94);
+    border-top-width: 1px;
+    border-color: #2f403a;
+    flex-direction: column;
+}
+
+.kit-bar__row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.kit-bar Label {
+    color: #e8e2d4;
+}
+
+.kit-bar__summary {
+    margin-left: 10px;
+    color: #b9c2b8;
+}
+
+.kit-bar__info {
+    margin-top: 2px;
+    white-space: normal;
+    color: #efeadb;
+}
+
+.kit-notice {
+    position: absolute;
+    top: 30px;
+    left: 12px;
+    right: 320px;
+    white-space: normal;
+    font-size: 13px;
+    padding: 4px 8px;
+    background-color: #5c2320;
+    color: #ffffff;
+    border-radius: 4px;
+}
+
+.kit-progress {
+    height: 3px;
+    margin: 2px 0 1px 0;
+    background-color: #f0e442;
+    border-radius: 2px;
+}

@@ -76,6 +76,31 @@ namespace Kit
         void OnEnable() { controls.Enable(); KitCursor.Lock(true); }
         void OnDisable() { controls.Disable(); KitCursor.Lock(false); }
 
+        // Anhalten mit Besitzern: mehrere Systeme (z.B. zwei Dialoge in zwei Fenstern) können den Spieler
+        // gleichzeitig anhalten. Er läuft erst wieder, wenn der letzte freigibt – und dann so, wie er vor dem
+        // ersten Anhalten war (war er schon aus, bleibt er aus).
+        readonly System.Collections.Generic.HashSet<object> m_Pausers = new System.Collections.Generic.HashSet<object>();
+        bool m_EnabledBeforePause;
+
+        /// <summary>True, solange irgendwer den Spieler angehalten hat.</summary>
+        public bool IsPaused => m_Pausers.Count > 0;
+
+        /// <summary>Hält den Spieler an. Derselbe Besitzer zweimal zählt einmal.</summary>
+        public void Pause(object owner)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            if (m_Pausers.Count == 0) m_EnabledBeforePause = enabled;
+            m_Pausers.Add(owner);
+            enabled = false;
+        }
+
+        /// <summary>Gibt die Pause dieses Besitzers frei. Der letzte stellt den Zustand von vorher wieder her.</summary>
+        public void Resume(object owner)
+        {
+            if (owner == null || !m_Pausers.Remove(owner)) return;
+            if (m_Pausers.Count == 0) enabled = m_EnabledBeforePause;
+        }
+
         void Update()
         {
             KitCursor.Update();

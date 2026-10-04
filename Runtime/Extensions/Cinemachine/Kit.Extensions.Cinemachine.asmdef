@@ -1,0 +1,10 @@
+{
+    "name": "Kit.Extensions.Cinemachine",
+    "rootNamespace": "Kit",
+    "references": ["Kit.Runtime", "Unity.Cinemachine"],
+    "autoReferenced": true,
+    "defineConstraints": ["KIT_CINEMACHINE"],
+    "versionDefines": [
+        { "name": "com.unity.cinemachine", "expression": "3.0.0", "define": "KIT_CINEMACHINE" }
+    ]
+}

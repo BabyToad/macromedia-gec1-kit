@@ -1,0 +1,6 @@
+{
+    "name": "Kit.Systems",
+    "rootNamespace": "Kit",
+    "references": ["Kit.Runtime", "Kit.Player", "Unity.TextMeshPro", "Unity.InputSystem"],
+    "autoReferenced": true
+}
