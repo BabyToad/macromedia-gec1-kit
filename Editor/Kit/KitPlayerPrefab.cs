@@ -9,6 +9,8 @@ namespace Kit.Editor
         /// <summary>GUID of the shipped Player/Spieler.prefab (stable: the package keeps the .meta files).</summary>
         public const string Guid = "c689fda3acbe5a6419b1e48ea86ebdad";
         const string StudioPath = "Assets/Kit/Player/Spieler.prefab";
+        // Player/Materials (URP Lit, shipped with the player): Spieler.mat, Spieler Blickrichtung.mat
+        const string BodyMaterialGuid = "eb15f519112b55245ad34d47538d59cc", VisorMaterialGuid = "7ca03ec8bd60b2f4cbee13cb9d5768af";
 
         /// <summary>Where the shipped prefab is (package or studio project), or null if it is missing.</summary>
         public static string ShippedPath => KitPaths.ByGuid(Guid);
@@ -39,6 +41,12 @@ namespace Kit.Editor
                     case KitPaths.Existing.NewCopy: path = AssetDatabase.GenerateUniqueAssetPath(path); break;
                 }
             }
+            return BuildAt(path);
+        }
+
+        /// <summary>Builds the prefab at exactly this path (no questions; replaces what is there).</summary>
+        public static GameObject BuildAt(string path)
+        {
             KitPaths.EnsureFolder(System.IO.Path.GetDirectoryName(path).Replace('\\', '/'));
             var root = new GameObject("Spieler") { tag = "Player" };
             var cc = root.AddComponent<CharacterController>();
@@ -49,12 +57,14 @@ namespace Kit.Editor
             var bodyVisual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             bodyVisual.name = "Körper";
             Object.DestroyImmediate(bodyVisual.GetComponent<Collider>());    // die Kollision macht der CharacterController
+            bodyVisual.GetComponent<Renderer>().sharedMaterial = KitMaterials.ShippedOrDefault(BodyMaterialGuid);
             bodyVisual.transform.SetParent(root.transform, false);
             bodyVisual.transform.localPosition = new Vector3(0, 1, 0);
             bodyVisual.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
             var visor = GameObject.CreatePrimitive(PrimitiveType.Cube);
             visor.name = "Blickrichtung";
             Object.DestroyImmediate(visor.GetComponent<Collider>());
+            visor.GetComponent<Renderer>().sharedMaterial = KitMaterials.ShippedOrDefault(VisorMaterialGuid);
             visor.transform.SetParent(bodyVisual.transform, false);
             visor.transform.localPosition = new Vector3(0, 0.55f, 0.45f);
             visor.transform.localScale = new Vector3(0.7f, 0.15f, 0.2f);
@@ -68,7 +78,9 @@ namespace Kit.Editor
 
             var camGo = new GameObject("Kamera") { tag = "MainCamera" };
             camGo.transform.SetParent(root.transform, false);
-            camGo.transform.localPosition = head.localPosition;
+            // Rest pose = the view from behind (KitPlayerCamera: distance 3.5, shoulder 0.5). In edit mode the Game view
+            // shows the player instead of the inside of its head; in Play, KitPlayerCamera places the camera each frame.
+            camGo.transform.localPosition = head.localPosition + new Vector3(0.5f, 0f, -3.5f);
             var cam = camGo.AddComponent<Camera>(); cam.nearClipPlane = 0.05f; cam.fieldOfView = 70f;
             camGo.AddComponent<AudioListener>();
             var follow = camGo.AddComponent<KitPlayerCamera>();

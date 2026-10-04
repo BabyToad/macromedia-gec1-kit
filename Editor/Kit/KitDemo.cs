@@ -66,8 +66,10 @@ namespace Kit.Editor
             return BuildAll(Folder, answer);
         }
 
-        static bool ExampleExists(string folder) =>
-            File.Exists(folder + "/Schlüssel und Tür.kit") || File.Exists(folder + "/Keller.unity");
+        // Everything "Beispiel bauen" writes: if any of it is there, it may be the student's – ask first.
+        static readonly string[] k_Outputs = { "Schlüssel und Tür.kit", "Keller.unity", "Boden.mat", "Schlüssel.mat", "Tür.mat" };
+
+        static bool ExampleExists(string folder) => System.Array.Exists(k_Outputs, f => File.Exists(folder + "/" + f));
 
         /// <summary>The same without the dialog: what to do if the example is already in <paramref name="folder"/>.</summary>
         public static string BuildAll(string folder, KitPaths.Existing whenExisting)
@@ -88,6 +90,7 @@ namespace Kit.Editor
                 }
             }
             KitPaths.EnsureFolder(folder);                         // jede fehlende Ebene; nie in Packages
+            bool replace = whenExisting == KitPaths.Existing.Overwrite;   // only then may existing materials be replaced
             var graph = File.Exists(graphPath) ? RebuildInPlace(graphPath) : BuildKeyDoorGraph(graphPath);
             var clip = WriteClick(folder + "/Tür-Klack.wav");
 
@@ -95,6 +98,7 @@ namespace Kit.Editor
             var light = new GameObject("Licht").AddComponent<Light>();
             light.type = LightType.Directional; light.transform.rotation = Quaternion.Euler(50, -30, 0);
             var floor = GameObject.CreatePrimitive(PrimitiveType.Plane); floor.name = "Boden"; floor.transform.localScale = new Vector3(2, 1, 2);
+            floor.GetComponent<Renderer>().sharedMaterial = KitMaterials.Colored(folder + "/Boden.mat", new Color(0.55f, 0.55f, 0.55f), replace);
 
             var player = (GameObject)PrefabUtility.InstantiatePrefab(KitPlayerPrefab.Load());
             player.transform.position = new Vector3(0, 0, -6);
@@ -102,11 +106,13 @@ namespace Kit.Editor
             var root = new GameObject("Schlüssel und Tür");
             var it = root.AddComponent<Interaction>(); it.Graph = graph;
             var key = GameObject.CreatePrimitive(PrimitiveType.Cube); key.name = "Schlüssel"; key.transform.SetParent(root.transform);
+            key.GetComponent<Renderer>().sharedMaterial = KitMaterials.Colored(folder + "/Schlüssel.mat", new Color(0.9f, 0.72f, 0.2f), replace);
             key.transform.position = new Vector3(3, 0.4f, -3); key.transform.localScale = new Vector3(0.2f, 0.2f, 0.6f);
             var zone = new GameObject("Türzone"); zone.transform.SetParent(root.transform);
             zone.transform.position = new Vector3(0, 1, 0.5f);
             var box = zone.AddComponent<BoxCollider>(); box.isTrigger = true; box.size = new Vector3(3, 2, 2);
             var door = GameObject.CreatePrimitive(PrimitiveType.Cube); door.name = "Tür"; door.transform.SetParent(root.transform);
+            door.GetComponent<Renderer>().sharedMaterial = KitMaterials.Colored(folder + "/Tür.mat", new Color(0.45f, 0.3f, 0.2f), replace);
             door.transform.position = new Vector3(0, 1.5f, 2); door.transform.localScale = new Vector3(3, 3, 0.2f);
             var sign = new GameObject("Schild"); sign.transform.SetParent(root.transform);
             sign.transform.position = new Vector3(2.2f, 2, 1.8f);

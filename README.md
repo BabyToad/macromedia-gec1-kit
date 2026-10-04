@@ -15,5 +15,7 @@ Anleitungen: <https://www.allknivesnobagel.com/teaching/gec1/guides/>
 **Voraussetzung:** Git muss installiert sein (Windows: Git für Windows; Mac: Command Line Tools),
 sonst kann Unity das Paket nicht laden.
 
+**Render-Pipeline:** Spieler-Prefab und Beispiel nutzen URP-Materialien; im Projekt muss die Universal Render Pipeline (URP) aktiv sein. In der Kursvorlage ist sie bereits eingestellt.
+
 Dieses Repository wird aus dem Studio-Repository erzeugt (`setup/tools/release_kit.py`). Änderungen
 bitte dort, nicht hier.

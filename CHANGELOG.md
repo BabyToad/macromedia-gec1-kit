@@ -2,6 +2,13 @@
 
 All notable changes to `de.macromedia.gec1`. Versions follow SemVer; tags are vX.Y.Z.
 
+## [0.3.1] - 2026-10-04
+
+- Rosa Materialien behoben: Spieler und Beispiel nutzen jetzt URP-Materialien
+- Spieler-Kamera steht im Edit-Modus hinter dem Spieler statt im Kopf
+- „Beispiel bauen“ überschreibt keine eigenen Materialien mehr
+- Abhängigkeit: URP (com.unity.render-pipelines.universal 17.3.0) ist jetzt angegeben
+
 ## [0.3.0] - 2026-10-04
 
 - Kit mit Graph-Editor: Interaktionen als Graph bauen und beim Spielen beobachten (Fenster öffnet sich per Doppelklick auf eine .kit-Datei)
