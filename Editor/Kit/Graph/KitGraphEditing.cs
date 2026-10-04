@@ -45,11 +45,28 @@ namespace Kit.Editor
 
         public static T AddNode<T>(Graph g, Vector2 position) where T : Node, new() => (T)AddNode(g, typeof(T), position);
 
-        public static Node AddNode(Graph g, Type nodeType, Vector2 position)
+        /// <summary>With a fixed node id: the same graph built twice gets the same ids, so slot ids and scene bindings match.</summary>
+        public static T AddNode<T>(Graph g, Vector2 position, Hash128 id) where T : Node, new() => (T)AddNode(g, typeof(T), position, id);
+
+        public static Node AddNode(Graph g, Type nodeType, Vector2 position) => AddNode(g, nodeType, position, default);
+
+        public static Node AddNode(Graph g, Type nodeType, Vector2 position, Hash128 id)
         {
             var model = ModelOf(g);
             var create = model.GetType().GetMethod("CreateNodeModel", k_Any, null, new[] { typeof(Node), typeof(Vector2) }, null);
             var nodeModel = create.Invoke(model, new object[] { Activator.CreateInstance(nodeType), position });
+            if (id.isValid)
+            {
+                // The graph indexes its elements by id: take the node out, give it the id, put it back.
+                var t = model.GetType();
+                var unregister = t.GetMethod("UnregisterElement", k_Any);
+                var register = t.GetMethod("RegisterElement", k_Any);
+                var setGuid = nodeModel.GetType().GetMethod("SetGuid", k_Any, null, new[] { typeof(Hash128) }, null);
+                if (unregister == null || register == null || setGuid == null) throw new MissingMethodException("Graph Toolkit: node ids cannot be set");
+                unregister.Invoke(model, new[] { nodeModel });
+                setGuid.Invoke(nodeModel, new object[] { id });
+                register.Invoke(model, new[] { nodeModel });
+            }
             return (Node)nodeModel.GetType().GetProperty("Node", k_Any).GetValue(nodeModel);
         }
 

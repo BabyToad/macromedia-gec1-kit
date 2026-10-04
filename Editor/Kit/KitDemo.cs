@@ -14,24 +14,28 @@ namespace Kit.Editor
         public static string GraphPath => Folder + "/Schlüssel und Tür.kit";
         public static string ScenePath => Folder + "/Keller.unity";
 
+        // Fixed node ids: every build of the example gets the same ids, so slot ids – and with them the bindings of
+        // any scene that uses the graph, e.g. a copied example scene – stay valid when it is rebuilt.
+        static Hash128 Id(string role) => Hash128.Compute("de.macromedia.gec1/Schlüssel und Tür/" + role);
+
         /// <summary>Draws the graph: same nodes and wires as on the v3 board.</summary>
         public static KitGraph BuildKeyDoorGraph(string path)
         {
             var g = KitGraphEditing.CreateAsset(path);
-            var key = KitGraphEditing.AddNode<ObjectNode>(g, new Vector2(0, 140));
+            var key = KitGraphEditing.AddNode<ObjectNode>(g, new Vector2(0, 140), Id("key"));
             KitGraphEditing.SetOption(key, ObjectNode.NameOption, "Schlüssel");
-            var use = KitGraphEditing.AddNode<InteractNode>(g, new Vector2(260, 0));
-            var flag = KitGraphEditing.AddNode<FlagNode>(g, new Vector2(560, -40));
+            var use = KitGraphEditing.AddNode<InteractNode>(g, new Vector2(260, 0), Id("use"));
+            var flag = KitGraphEditing.AddNode<FlagNode>(g, new Vector2(560, -40), Id("flag"));
             KitGraphEditing.SetOption(flag, "label", "Schlüssel vorhanden");
-            var hide = KitGraphEditing.AddNode<SetActiveNode>(g, new Vector2(560, 190));
-            var zone = KitGraphEditing.AddNode<ZoneNode>(g, new Vector2(260, 420));
-            var branch = KitGraphEditing.AddNode<BranchNode>(g, new Vector2(560, 420));
-            var move = KitGraphEditing.AddNode<MoveNode>(g, new Vector2(860, 380));
+            var hide = KitGraphEditing.AddNode<SetActiveNode>(g, new Vector2(560, 190), Id("hide"));
+            var zone = KitGraphEditing.AddNode<ZoneNode>(g, new Vector2(260, 420), Id("zone"));
+            var branch = KitGraphEditing.AddNode<BranchNode>(g, new Vector2(560, 420), Id("branch"));
+            var move = KitGraphEditing.AddNode<MoveNode>(g, new Vector2(860, 380), Id("move"));
             KitGraphEditing.SetOption(move, "offset", new Vector3(0, 3, 0));
             KitGraphEditing.SetOption(move, "seconds", 1f);
-            var sign = KitGraphEditing.AddNode<SetTextNode>(g, new Vector2(860, 680));
+            var sign = KitGraphEditing.AddNode<SetTextNode>(g, new Vector2(860, 680), Id("sign"));
             KitGraphEditing.SetOption(sign, "format", "Verschlossen.");
-            var sound = KitGraphEditing.AddNode<PlaySoundNode>(g, new Vector2(1180, 400));
+            var sound = KitGraphEditing.AddNode<PlaySoundNode>(g, new Vector2(1180, 400), Id("sound"));
 
             KitGraphEditing.Connect(g, key, ObjectNode.Out, use, "target");
             KitGraphEditing.Connect(g, key, ObjectNode.Out, hide, "target");
@@ -47,11 +51,45 @@ namespace Kit.Editor
         }
 
         [MenuItem("Tools/Kit/Beispiel „Schlüssel und Tür“ bauen")]
-        public static void BuildAll()
+        static void BuildMenu() => BuildAll();
+
+        /// <summary>
+        /// Builds graph + scene. An existing example (maybe changed by the student) is only replaced on an
+        /// explicit "Überschreiben"; otherwise the new one goes into a fresh folder. Unsaved open scenes are
+        /// offered for saving first. Returns the scene path, or null if nothing was built.
+        /// </summary>
+        public static string BuildAll()
         {
-            KitPaths.EnsureFolder(Folder);                         // jede fehlende Ebene; nie in Packages
-            var graph = File.Exists(GraphPath) ? AssetDatabase.LoadAssetAtPath<KitGraph>(GraphPath) : BuildKeyDoorGraph(GraphPath);
-            var clip = WriteClick(Folder + "/Tür-Klack.wav");
+            if (!KitPaths.OpenScenesSafe()) return null;
+            var answer = KitPaths.Existing.Overwrite;              // nothing there yet: nothing to overwrite
+            if (ExampleExists(Folder)) answer = KitPaths.AskExisting("Das Beispiel „Schlüssel und Tür“", Folder);
+            return BuildAll(Folder, answer);
+        }
+
+        static bool ExampleExists(string folder) =>
+            File.Exists(folder + "/Schlüssel und Tür.kit") || File.Exists(folder + "/Keller.unity");
+
+        /// <summary>The same without the dialog: what to do if the example is already in <paramref name="folder"/>.</summary>
+        public static string BuildAll(string folder, KitPaths.Existing whenExisting)
+        {
+            if (!KitPaths.OpenScenesSafe()) return null;
+            string graphPath = folder + "/Schlüssel und Tür.kit", scenePath = folder + "/Keller.unity";
+            if (ExampleExists(folder))
+            {
+                switch (whenExisting)
+                {
+                    case KitPaths.Existing.Cancel: return null;
+                    case KitPaths.Existing.NewCopy:
+                        folder = AssetDatabase.GenerateUniqueAssetPath(folder);
+                        graphPath = folder + "/Schlüssel und Tür.kit"; scenePath = folder + "/Keller.unity";
+                        break;
+                    case KitPaths.Existing.Overwrite:
+                        break;                                     // ausdrücklich gewünscht: frisches Beispiel, siehe unten
+                }
+            }
+            KitPaths.EnsureFolder(folder);                         // jede fehlende Ebene; nie in Packages
+            var graph = File.Exists(graphPath) ? RebuildInPlace(graphPath) : BuildKeyDoorGraph(graphPath);
+            var clip = WriteClick(folder + "/Tür-Klack.wav");
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var light = new GameObject("Licht").AddComponent<Light>();
@@ -85,8 +123,24 @@ namespace Kit.Editor
                     : node is Zone ? zone : node is Move ? door : node is SetText ? sign : node is PlaySound ? klack : null;
                 if (target) it.SetBinding(slot.id, target);
             }
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            Debug.Log($"[KitDemo] {GraphPath} + {ScenePath}: {graph.nodes.Count} Knoten, {graph.slots.Count} Slots");
+            EditorSceneManager.SaveScene(scene, scenePath);
+            Debug.Log($"[KitDemo] {graphPath} + {scenePath}: {graph.nodes.Count} Knoten, {graph.slots.Count} Slots");
+            return scenePath;
+        }
+
+        /// <summary>
+        /// Overwrite keeps the asset: the fresh graph is built next to it and its content copied over the old file.
+        /// The .meta (and so the GUID) stays, and the fixed node ids keep the slots: other scenes still find the graph.
+        /// </summary>
+        static KitGraph RebuildInPlace(string graphPath)
+        {
+            string fresh = Path.GetDirectoryName(graphPath).Replace('\\', '/') + "/Schlüssel und Tür (neu gebaut).kit";
+            AssetDatabase.DeleteAsset(fresh);
+            BuildKeyDoorGraph(fresh);
+            File.Copy(fresh, graphPath, overwrite: true);
+            AssetDatabase.DeleteAsset(fresh);
+            AssetDatabase.ImportAsset(graphPath, ImportAssetOptions.ForceUpdate);
+            return AssetDatabase.LoadAssetAtPath<KitGraph>(graphPath);
         }
 
         static AudioClip WriteClick(string path)

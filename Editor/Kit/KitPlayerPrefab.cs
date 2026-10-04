@@ -31,6 +31,14 @@ namespace Kit.Editor
         public static GameObject Build()
         {
             var path = Path;
+            if (path != ShippedPath && System.IO.File.Exists(path))   // eine eigene Kopie, vielleicht geändert: nicht ungefragt ersetzen
+            {
+                switch (KitPaths.AskExisting("Das Spieler-Prefab", path))
+                {
+                    case KitPaths.Existing.Cancel: return null;
+                    case KitPaths.Existing.NewCopy: path = AssetDatabase.GenerateUniqueAssetPath(path); break;
+                }
+            }
             KitPaths.EnsureFolder(System.IO.Path.GetDirectoryName(path).Replace('\\', '/'));
             var root = new GameObject("Spieler") { tag = "Player" };
             var cc = root.AddComponent<CharacterController>();

@@ -1,4 +1,8 @@
+using System;
+using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 
 namespace Kit.Editor
@@ -19,9 +23,54 @@ namespace Kit.Editor
 
         public static bool FromPackage => Package != null;
 
-        /// <summary>True for paths the project may write (Assets/…); Packages/… is read-only.</summary>
-        public static bool IsWritable(string assetPath) =>
-            !string.IsNullOrEmpty(assetPath) && (assetPath == "Assets" || assetPath.StartsWith("Assets/"));
+        /// <summary>
+        /// True only for paths that really end up inside the project's Assets folder (Packages/… is read-only).
+        /// Resolved to a full path first, so "Assets/../Packages/…" does not count as Assets.
+        /// </summary>
+        public static bool IsWritable(string assetPath)
+        {
+            if (string.IsNullOrEmpty(assetPath)) return false;
+            string root, full;
+            try
+            {
+                root = Path.GetFullPath("Assets").TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                full = Path.GetFullPath(assetPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            }
+            catch (Exception) { return false; }
+            return string.Equals(full, root, StringComparison.OrdinalIgnoreCase)
+                || full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public enum Existing { NewCopy, Overwrite, Cancel }
+
+        /// <summary>
+        /// Something the menu would build is already there (possibly changed by the student): ask. Without a
+        /// window to ask in (batch mode) the answer is always "new copy" – nothing is overwritten unasked.
+        /// </summary>
+        public static Existing AskExisting(string what, string path)
+        {
+            if (Application.isBatchMode) return Existing.NewCopy;
+            int r = EditorUtility.DisplayDialogComplex("Schon vorhanden",
+                $"{what} gibt es schon:\n{path}\n\nBeim Überschreiben gehen Änderungen daran verloren.",
+                "Neue Kopie anlegen", "Abbrechen", "Überschreiben");
+            return r == 0 ? Existing.NewCopy : r == 2 ? Existing.Overwrite : Existing.Cancel;
+        }
+
+        /// <summary>
+        /// Before a menu replaces the open scene: offer to save changes. False = stop (cancelled, or batch mode
+        /// with unsaved changes, where nobody can be asked).
+        /// </summary>
+        public static bool OpenScenesSafe()
+        {
+            if (!Application.isBatchMode) return EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+            for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
+                if (UnityEngine.SceneManagement.SceneManager.GetSceneAt(i).isDirty)
+                {
+                    Debug.LogWarning("[Kit] Eine geöffnete Szene hat ungespeicherte Änderungen: nichts gebaut.");
+                    return false;
+                }
+            return true;
+        }
 
         /// <summary>Path of a shipped asset by its GUID, or null if it is not in this project.</summary>
         public static string ByGuid(string guid)
@@ -33,7 +82,7 @@ namespace Kit.Editor
         /// <summary>Creates every missing level of an Assets/… folder.</summary>
         public static string EnsureFolder(string folder)
         {
-            if (!IsWritable(folder)) throw new System.ArgumentException($"„{folder}“ liegt nicht unter Assets und ist schreibgeschützt", nameof(folder));
+            if (!IsWritable(folder)) throw new ArgumentException($"„{folder}“ liegt nicht unter Assets und ist schreibgeschützt", nameof(folder));
             if (AssetDatabase.IsValidFolder(folder)) return folder;
             var parts = folder.Split('/');
             string current = parts[0];
