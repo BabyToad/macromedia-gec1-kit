@@ -134,8 +134,8 @@ namespace Kit.Editor
         /// </summary>
         static KitGraph RebuildInPlace(string graphPath)
         {
-            string fresh = Path.GetDirectoryName(graphPath).Replace('\\', '/') + "/Schlüssel und Tür (neu gebaut).kit";
-            AssetDatabase.DeleteAsset(fresh);
+            // A free name: a file the student happens to have under this name is never touched.
+            string fresh = AssetDatabase.GenerateUniqueAssetPath(Path.GetDirectoryName(graphPath).Replace('\\', '/') + "/Schlüssel und Tür (neu gebaut).kit");
             BuildKeyDoorGraph(fresh);
             File.Copy(fresh, graphPath, overwrite: true);
             AssetDatabase.DeleteAsset(fresh);
