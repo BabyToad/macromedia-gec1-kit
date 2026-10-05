@@ -333,7 +333,7 @@ namespace Kit
             try
             {
                 if (input == null) { Report(node, NodeStatus.Failed, $"kein Eingang „{inputPort}“ (Graph neu importieren?)", -1f); return; }
-                if (!ResolveRefs(node, signal, staticOnly: false, out var problem)) { Report(node, NodeStatus.Failed, problem, -1f); return; }
+                if (!input.SkipRefs && !ResolveRefs(node, signal, staticOnly: false, out var problem)) { Report(node, NodeStatus.Failed, problem, -1f); return; }
                 PullData(node, signal, 0);
                 int pendingBefore = m_Pending.Count;
                 try { ((System.Reflection.MethodInfo)input.Member).Invoke(n, new object[] { signal }); }

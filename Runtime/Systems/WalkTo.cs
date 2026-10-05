@@ -43,7 +43,7 @@ namespace Kit
             work = StartWork(Walk(agent, s));
         }
 
-        [Input("Stopp")]
+        [Input("Stopp", UsesRefs = false)]   // stoppt den eigenen Läufer: braucht keinen ◆ aus dem Ereignis
         public void Stop(Signal s)
         {
             if (work == null) { Done("ging nicht"); return; }

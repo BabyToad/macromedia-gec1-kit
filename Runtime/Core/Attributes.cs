@@ -19,6 +19,11 @@ namespace Kit
     public sealed class InputAttribute : Attribute
     {
         public readonly string Label;
+        /// <summary>
+        /// False for inputs that do not use the node's ◆ references (e.g. Stopp): they run even when the event does
+        /// not carry an event-bound reference, so a separate event can cancel what another event started.
+        /// </summary>
+        public bool UsesRefs = true;
         public InputAttribute(string label) { Label = label; }
     }
 

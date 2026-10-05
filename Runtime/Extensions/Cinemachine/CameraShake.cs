@@ -7,7 +7,7 @@ namespace Kit
     // Kamera wackeln: löst einen Cinemachine-Impuls aus (Bildschirmwackeln). Form und Stärke stellt die
     // Impulsquelle ein; sichtbar wird es nur an Kameras mit CinemachineImpulseListener.
     [Serializable]
-    [NodeInfo("Kamera wackeln", "Erweiterung", "Cinemachine-Impuls auslösen")]
+    [NodeInfo("Kamera wackeln (Cinemachine)", "Erweiterung", "Cinemachine-Impuls auslösen")]
     public class CameraShake : KitNode
     {
         [Ref("Impulsquelle")] public CinemachineImpulseSource source;

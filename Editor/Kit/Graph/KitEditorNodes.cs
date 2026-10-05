@@ -124,6 +124,7 @@ namespace Kit.Editor
     [Serializable] public class SetTextNode : KitEditorNode { public override Type RuntimeType => typeof(SetText); }
     [Serializable] public class LoadSceneNode : KitEditorNode { public override Type RuntimeType => typeof(LoadScene); }
     [Serializable] public class NoteNode : KitEditorNode { public override Type RuntimeType => typeof(Note); }
+    [Serializable] public class HitstopNode : KitEditorNode { public override Type RuntimeType => typeof(Hitstop); }
 
     // ---- Spielsysteme -------------------------------------------------------------------------------
     [Serializable] public class HealthNode : KitEditorNode { public override Type RuntimeType => typeof(Health); }
@@ -133,6 +134,10 @@ namespace Kit.Editor
     [Serializable] public class HudDisplayNode : KitEditorNode { public override Type RuntimeType => typeof(HudDisplay); }
     [Serializable] public class WalkToNode : KitEditorNode { public override Type RuntimeType => typeof(WalkTo); }
     [Serializable] public class SharedFlagNode : KitEditorNode { public override Type RuntimeType => typeof(SharedFlag); }
+    [Serializable] public class PlayerShakeNode : KitEditorNode { public override Type RuntimeType => typeof(PlayerShake); }
+    [Serializable] public class UiButtonNode : KitEditorNode { public override Type RuntimeType => typeof(UiButton); }
+    [Serializable] public class MenuPauseNode : KitEditorNode { public override Type RuntimeType => typeof(MenuPause); }
+    [Serializable] public class MenuResumeNode : KitEditorNode { public override Type RuntimeType => typeof(MenuResume); }
 
     // ---- Erweiterung --------------------------------------------------------------------------------
     [Serializable] public class AnimatorValueNode : KitEditorNode { public override Type RuntimeType => typeof(AnimatorValue); }

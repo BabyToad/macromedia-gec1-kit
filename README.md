@@ -7,8 +7,8 @@ es über eine Git-URL mit Versions-Tag ein.
 | Teil | Seit | Inhalt |
 |---|---|---|
 | Setup-Check | 0.1.0 | Menü **Kurs > Setup prüfen** |
-| Spieler-Controller | 0.2.0 (geplant, vor 23.10.) | Prefab `Player/Spieler.prefab` |
-| Kit (Graph) | 0.3.0 (geplant, 13.11.) | Interaktionen als Graph |
+| Spieler-Controller | 0.2.0 | Prefab `Player/Spieler.prefab` |
+| Kit (Graph) | 0.3.0 | Interaktionen als Graph |
 
 Anleitungen: <https://www.allknivesnobagel.com/teaching/gec1/guides/>
 

@@ -14,6 +14,7 @@ namespace Kit
             public Type Type;          // data or reference type; null for ▶ events
             public MemberInfo Member;
             public bool Optional, EventLocal, Permanent;
+            public bool SkipRefs;      // ▶ input that does not use the ◆ references (InputAttribute.UsesRefs = false)
             public object Get(object node) => Member is FieldInfo f ? f.GetValue(node) : ((PropertyInfo)Member).GetValue(node);
             public void Set(object node, object v) { if (Member is FieldInfo f) f.SetValue(node, v); }
         }
@@ -50,7 +51,7 @@ namespace Kit
                 foreach (var m in type.GetMethods(k_Flags | BindingFlags.DeclaredOnly).OrderBy(m => m.MetadataToken))
                 {
                     var a = m.GetCustomAttribute<InputAttribute>();
-                    if (a != null) Inputs.Add(new Port { Id = m.Name, Label = a.Label, Member = m });
+                    if (a != null) Inputs.Add(new Port { Id = m.Name, Label = a.Label, Member = m, SkipRefs = !a.UsesRefs });
                 }
                 foreach (var f in type.GetFields(k_Flags | BindingFlags.DeclaredOnly).OrderBy(f => f.MetadataToken))
                 {

@@ -125,34 +125,59 @@ namespace Kit.Editor
         }
     }
 
-    /// <summary>Before Play: check every Interaction and list what would fail.</summary>
+    /// <summary>
+    /// Before Play: save open graphs and check every Interaction. The list is written when Play has started:
+    /// the Console's "Clear on Play" would wipe warnings logged while leaving edit mode (Weiche, Day 3).
+    /// </summary>
     [InitializeOnLoad]
-    static class KitPlayCheck
+    public static class KitPlayCheck
     {
-        static KitPlayCheck()
+        const string Key = "Kit.PlayCheck.Pending";   // SessionState survives the domain reload on entering Play
+
+        static KitPlayCheck() { EditorApplication.playModeStateChanged += OnPlayModeChanged; }
+
+        public static void OnPlayModeChanged(PlayModeStateChange s)
         {
-            EditorApplication.playModeStateChanged += s =>
+            if (s == PlayModeStateChange.ExitingEditMode)
             {
-                if (s != PlayModeStateChange.ExitingEditMode) return;
-                // Save open kit graphs first: Play runs the saved (imported) graph, and GTK would otherwise stop
-                // Play with an "Unsaved Changes" dialog. This handler is registered before GTK's windows exist,
-                // so it runs before GTK's own check.
-                foreach (var w in KitGtkBridge.GraphWindows())
+                SaveOpenGraphs();
+                SessionState.SetString(Key, string.Join("\n", Check()));   // the state before Play counts
+            }
+            else if (s == PlayModeStateChange.EnteredPlayMode)
+            {
+                var pending = SessionState.GetString(Key, "");
+                SessionState.EraseString(Key);
+                foreach (var line in pending.Split('\n'))
+                    if (line.Length > 0) Debug.LogWarning(line);
+            }
+        }
+
+        /// <summary>One "[Kit] Vor Play: …" line per problem of the open scenes' interactions.</summary>
+        public static System.Collections.Generic.List<string> Check()
+        {
+            var lines = new System.Collections.Generic.List<string>();
+            foreach (var it in Object.FindObjectsByType<Interaction>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                foreach (var p in it.Validate())
+                    lines.Add($"[Kit] Vor Play: {it.name} › {(p.node >= 0 && it.Graph ? it.Graph.nodes[p.node].title : "Interaktion")}: {p.text.Replace('\n', ' ')}");
+            return lines;
+        }
+
+        static void SaveOpenGraphs()
+        {
+            // Play runs the saved (imported) graph, and GTK would otherwise stop Play with an "Unsaved Changes"
+            // dialog. This handler is registered before GTK's windows exist, so it runs before GTK's own check.
+            foreach (var w in KitGtkBridge.GraphWindows())
+            {
+                var graph = KitGtkBridge.GraphOf(w);
+                if (graph == null) continue;
+                try
                 {
-                    var graph = KitGtkBridge.GraphOf(w);
-                    if (graph == null) continue;
-                    try
-                    {
-                        Unity.GraphToolkit.Editor.GraphDatabase.SaveGraphIfDirty(graph);
-                        AssetDatabase.ImportAsset(Unity.GraphToolkit.Editor.GraphDatabase.GetGraphAssetPath(graph), ImportAssetOptions.ForceSynchronousImport);
-                        typeof(EditorWindow).GetProperty("hasUnsavedChanges")?.SetValue(w, false);   // protected setter
-                    }
-                    catch (System.Exception e) { Debug.LogWarning("[Kit] Graph vor Play nicht gespeichert: " + e.Message); }
+                    Unity.GraphToolkit.Editor.GraphDatabase.SaveGraphIfDirty(graph);
+                    AssetDatabase.ImportAsset(Unity.GraphToolkit.Editor.GraphDatabase.GetGraphAssetPath(graph), ImportAssetOptions.ForceSynchronousImport);
+                    typeof(EditorWindow).GetProperty("hasUnsavedChanges")?.SetValue(w, false);   // protected setter
                 }
-                foreach (var it in Object.FindObjectsByType<Interaction>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
-                    foreach (var p in it.Validate())
-                        Debug.LogWarning($"[Kit] Vor Play: {it.name} › {(p.node >= 0 && it.Graph ? it.Graph.nodes[p.node].title : "Interaktion")}: {p.text}", it);
-            };
+                catch (System.Exception e) { Debug.LogWarning("[Kit] Graph vor Play nicht gespeichert: " + e.Message); }
+            }
         }
     }
 }

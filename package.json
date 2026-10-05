@@ -1,8 +1,8 @@
 {
   "name": "de.macromedia.gec1",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "displayName": "GEC1 Kurs-Paket",
-  "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen), Spieler-Controller (Prefab Spieler), Kit-Runtime, Kit-Graph-Editor, Beispiel Schlüssel und Tür.",
+  "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen), Spieler-Controller (Prefab Spieler), Kit-Runtime, Kit-Graph-Editor, Beispiel Werkstatt (kaputt).",
   "unity": "6000.3",
   "author": {
     "name": "Jonas Heinke"
@@ -27,12 +27,5 @@
     "com.unity.modules.physics": "1.0.0",
     "com.unity.render-pipelines.universal": "17.3.0",
     "com.unity.ugui": "2.0.0"
-  },
-  "samples": [
-    {
-      "displayName": "Schlüssel und Tür",
-      "description": "Beispiel-Interaktion als Graph: Schlüssel aufheben, Tür öffnet sich. Mit Szene Keller.",
-      "path": "Samples~/Schluessel und Tuer"
-    }
-  ]
+  }
 }
