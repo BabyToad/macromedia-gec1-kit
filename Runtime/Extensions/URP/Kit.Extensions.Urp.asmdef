@@ -1,0 +1,10 @@
+{
+    "name": "Kit.Extensions.Urp",
+    "rootNamespace": "Kit",
+    "references": ["Kit.Runtime", "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime"],
+    "autoReferenced": true,
+    "defineConstraints": ["KIT_URP"],
+    "versionDefines": [
+        { "name": "com.unity.render-pipelines.universal", "expression": "17.0.0", "define": "KIT_URP" }
+    ]
+}

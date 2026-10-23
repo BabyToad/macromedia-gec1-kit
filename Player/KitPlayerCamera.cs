@@ -5,14 +5,17 @@ namespace Kit
     // Kamera zum Spieler: in der Ich-Perspektive sitzt sie im Kopf, von hinten schwebt sie hinter
     // der Schulter. Stößt sie dabei an eine Wand, rückt sie näher heran, statt durch die Wand zu sehen.
     // Läuft in LateUpdate, also nachdem sich der Spieler in diesem Frame bewegt hat.
-    [AddComponentMenu("Kit/Spieler-Kamera")]
-    public class KitPlayerCamera : MonoBehaviour
+    [AddComponentMenu(KitBrand.ComponentMenu + "Spieler-Kamera")]
+    public class KitPlayerCamera : MonoBehaviour, IKitViewer
     {
+        [Hint("Der Spieler, dem die Kamera folgt. Richtet das Prefab ein.", label: "Spieler")]
         public KitPlayer player;
-        [Tooltip("Abstand hinter dem Kopf (Ansicht von hinten)")] public float distance = 3.5f;
-        [Tooltip("Seitlich versetzt, damit der Spieler nicht die Mitte verdeckt")] public float shoulder = 0.5f;
-        [Tooltip("Abstand, den die Kamera zu Wänden hält")] public float wallPadding = 0.25f;
-        [Tooltip("Diese Renderer werden in der Ich-Perspektive ausgeblendet")] public Renderer[] hideInFirstPerson;
+        /// <summary>For nodes that work "from the player" (IKitViewer).</summary>
+        public Transform Body => player ? player.transform : null;
+        [Hint("Wie weit die Kamera in der Ansicht von hinten hinter dem Kopf schwebt.", unit: "m", range: "2 bis 6", edges: "Steht eine Wand im Weg, rückt sie näher heran.", label: "Abstand")] public float distance = 3.5f;
+        [Hint("Wie weit die Kamera seitlich versetzt ist, damit der Spieler nicht die Bildmitte verdeckt.", unit: "m", range: "0 bis 1", edges: "0: genau dahinter. Negativ: über der linken Schulter.", label: "Schulterversatz")] public float shoulder = 0.5f;
+        [Hint("Wie viel Abstand die Kamera zu Wänden hält, damit sie nicht hineinschaut.", unit: "m", range: "0,1 bis 0,5", label: "Wandabstand")] public float wallPadding = 0.25f;
+        [Hint("Diese Renderer werden in der Ich-Perspektive ausgeblendet, z.B. der eigene Körper.", label: "In Ich-Perspektive ausblenden")] public Renderer[] hideInFirstPerson;
 
         public bool Blocked { get; private set; }   // für Tests und Anzeige: wurde die Kamera herangeholt?
 
@@ -67,8 +70,24 @@ namespace Kit
     {
         public static bool Locked => Cursor.lockState == CursorLockMode.Locked;
 
+        // Owners that need the cursor free (a visible menu screen). While any holds, nothing locks it, not even a click.
+        static readonly System.Collections.Generic.HashSet<object> s_FreeHolds = new System.Collections.Generic.HashSet<object>();
+
+        /// <summary>True while some owner needs the cursor free.</summary>
+        public static bool HeldFree => s_FreeHolds.Count > 0;
+
+        /// <summary>Keeps the cursor free for this owner (e.g. a visible menu), until <see cref="ReleaseFree"/>.</summary>
+        public static void HoldFree(object owner) { if (owner != null && s_FreeHolds.Add(owner)) Lock(false); }
+
+        /// <summary>Lets go of this owner's hold. The cursor stays free until something locks it again.</summary>
+        public static void ReleaseFree(object owner) { if (owner != null) s_FreeHolds.Remove(owner); }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void NewSession() => s_FreeHolds.Clear();
+
         public static void Lock(bool on)
         {
+            if (on && HeldFree) on = false;                                   // a visible menu keeps it free
             Cursor.lockState = on ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !on;
         }
@@ -78,7 +97,7 @@ namespace Kit
             var kb = UnityEngine.InputSystem.Keyboard.current;
             var mouse = UnityEngine.InputSystem.Mouse.current;
             if (kb != null && kb.escapeKey.wasPressedThisFrame) Lock(false);
-            else if (!Locked && mouse != null && mouse.leftButton.wasPressedThisFrame) Lock(true);
+            else if (!Locked && !HeldFree && mouse != null && mouse.leftButton.wasPressedThisFrame) Lock(true);
         }
     }
 }

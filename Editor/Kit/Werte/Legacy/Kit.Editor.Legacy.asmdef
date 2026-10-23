@@ -1,0 +1,7 @@
+{
+    "name": "Kit.Editor.Legacy",
+    "rootNamespace": "Kit.Editor",
+    "references": ["Kit.Runtime", "Kit.Systems", "Kit.Editor", "Unity.GraphToolkit.Editor", "Unity.GraphToolkit.Common.Editor", "Unity.TextMeshPro"],
+    "includePlatforms": ["Editor"],
+    "autoReferenced": true
+}

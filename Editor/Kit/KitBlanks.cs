@@ -8,7 +8,7 @@ namespace Kit.Editor
     /// </summary>
     public static class KitBlanks
     {
-        [MenuItem("Tools/Kit/Rohling „Truhe“ bauen")]
+        [MenuItem(KitBrand.ToolsMenu + "Rohling „Truhe“ bauen")]
         static void TruheMenu()
         {
             var view = SceneView.lastActiveSceneView;

@@ -9,7 +9,7 @@ namespace Kit.Editor
     public static class KitSystemsMenu
     {
         /// <summary>A screen-space dialog window: panel at the bottom, speaker, line, three answers.</summary>
-        [MenuItem("GameObject/Kit/Dialogfenster", false, 11)]
+        [MenuItem(KitBrand.GameObjectMenu + "Dialogfenster", false, 11)]
         public static KitDialogBox CreateDialogBox()
         {
             var root = new GameObject("Dialogfenster", typeof(Canvas), typeof(CanvasScaler));
@@ -40,7 +40,7 @@ namespace Kit.Editor
                 box.answers[i] = Text("Antwort " + (char)('A' + i), new Vector2(i / 3f, 0.05f), new Vector2((i + 1) / 3f, 0.35f), 28, FontStyles.Normal);
             panel.SetActive(false);
 
-            Undo.RegisterCreatedObjectUndo(root, "Kit: Dialogfenster anlegen");
+            Undo.RegisterCreatedObjectUndo(root, KitBrand.Name + ": Dialogfenster anlegen");
             Selection.activeGameObject = root;
             return box;
         }

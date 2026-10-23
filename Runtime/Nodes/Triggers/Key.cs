@@ -5,14 +5,18 @@ namespace Kit
 {
     // Taste: ein Ereignis beim Drücken, eins beim Loslassen. "Gehalten" ist ein Wert, kein Ereignis.
     [Serializable]
-    [NodeInfo("Taste", "Auslöser", "Taste gedrückt oder losgelassen")]
+    [NodeInfo("Taste", KitGroups.Ausloeser, "Taste gedrückt oder losgelassen")]
     public class Key : KitNode
     {
+        [Hint("Welche Taste beobachtet wird.")]
         [Setting("Taste")] public KeyCode key = KeyCode.Space;
 
+        [Hint("Feuert einmal im Moment des Drückens.")]
         [Output("Gedrückt")] [NonSerialized] public Output pressed;
+        [Hint("Feuert einmal im Moment des Loslassens.")]
         [Output("Losgelassen")] [NonSerialized] public Output released;
 
+        [Hint("Ja, solange die Taste unten ist. Ein Wert zum Abfragen, kein Ereignis.")]
         [DataOut("Gehalten")] public bool Held => KitInput.Held(key);
 
         public override void Tick()

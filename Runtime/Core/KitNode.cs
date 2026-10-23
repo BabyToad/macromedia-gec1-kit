@@ -42,7 +42,7 @@ namespace Kit
     /// <summary>▶ An event output on a node. Call <see cref="Fire"/> to send the event along its wires.</summary>
     public sealed class Output
     {
-        internal Interaction runner;
+        internal Logic runner;
         internal int node;
         internal string port;
         public void Fire(Signal signal) => runner.Emit(node, port, signal);
@@ -53,7 +53,7 @@ namespace Kit
     /// <summary>
     /// Base class for every kit node. A node reacts to ▶ inputs (methods with [Input]), reads its
     /// ◆ references and ● data from fields, and reports what it is doing: Running, Done, Blocked, Fail.
-    /// One copy of the node exists per <see cref="Interaction"/> in the scene, so two doors never share state.
+    /// One copy of the node exists per <see cref="Logic"/> in the scene, so two doors never share state.
     /// </summary>
     [Serializable]
     public abstract class KitNode
@@ -61,20 +61,20 @@ namespace Kit
         [HideInInspector] public string id;     // stable id from the graph file
         [HideInInspector] public string title;  // German title shown on the node
 
-        [NonSerialized] internal Interaction runner;
+        [NonSerialized] internal Logic runner;
         [NonSerialized] internal int index;
 
         /// <summary>The interaction this copy belongs to.</summary>
-        public Interaction Runner => runner;
+        public Logic Runner => runner;
 
         // ---- lifecycle --------------------------------------------------------------------------
         /// <summary>
-        /// Interaction became active: subscribe to the world (triggers, input) here, and create any lists or
+        /// Logic became active: subscribe to the world (triggers, input) here, and create any lists or
         /// dictionaries the node keeps. Each interaction gets a shallow copy of the node, so a list created in a
         /// field initializer would be shared by all copies.
         /// </summary>
         public virtual void OnStart() { }
-        /// <summary>Interaction stopped: unsubscribe, forget running work. Never fire outputs here.</summary>
+        /// <summary>Logic stopped: unsubscribe, forget running work. Never fire outputs here.</summary>
         public virtual void OnStop() { }
         /// <summary>Called every frame while active (only override if you need it).</summary>
         public virtual void Tick() { }

@@ -8,16 +8,20 @@ namespace Kit
     // über KitTime an und gibt sie nach der Dauer in echter Zeit wieder frei. Mehrere Anhalten (oder ein offenes
     // Pause-Menü) gleichzeitig: das langsamste gilt, das Tempo von vorher kommt erst zurück, wenn keins mehr hält.
     [Serializable]
-    [NodeInfo("Anhalten", "Aktion", "Spiel kurz einfrieren (Hitstop)")]
+    [NodeInfo("Anhalten", KitGroups.Aktion, "Spiel kurz einfrieren (Hitstop)")]
     public class Hitstop : KitNode
     {
-        [Setting("Dauer (ms)")] public float milliseconds = 80f;
-        [Setting("Tempo (0 = Stillstand)")] public float timeScale = 0f;
+        [Hint("Wie lange das Spiel eingefroren bleibt, gemessen in echter Zeit.", unit: "ms", range: "30 bis 200", edges: "0 oder negativ: Fehler, nichts friert ein. Über 300: wirkt eher wie ein Hänger als wie ein Treffer.")]
+        [Setting("Dauer")] public float milliseconds = 80f;
+        [Hint("Wie schnell das Spiel währenddessen läuft, als feste Zeitskala (1 = normal), egal wie schnell es vorher lief.", unit: "×", range: "0 bis 0,3", edges: "0: Stillstand. Über 1: zählt als 1.")]
+        [Setting("Tempo")] public float timeScale = 0f;
 
+        [Hint("Feuert, wenn die Dauer um ist und dieser Knoten die Zeit wieder freigibt.")]
         [Output("Weiter")] [NonSerialized] public Output resumed;
 
         Coroutine holding;
 
+        [Hint("Friert das Spiel ein. Kommt währenddessen ein neues Ereignis, beginnt die Dauer von vorn; das alte bekommt kein „Weiter“.")]
         [Input("Anhalten")]
         public void Hold(Signal s)
         {

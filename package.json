@@ -1,8 +1,8 @@
 {
   "name": "de.macromedia.gec1",
-  "version": "0.3.2",
-  "displayName": "GEC1 Kurs-Paket",
-  "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen), Spieler-Controller (Prefab Spieler), Kit-Runtime, Kit-Graph-Editor, Beispiel Werkstatt (kaputt).",
+  "version": "0.5.0",
+  "displayName": "Besteck – Kurs-Paket GEC1",
+  "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen), Spieler-Controller (Prefab Spieler), Logik und Rollen (Laufzeit), Logik-Graph-Editor, Beispiel Werkstatt (kaputt).",
   "unity": "6000.3",
   "author": {
     "name": "Jonas Heinke"
@@ -19,11 +19,13 @@
     "gec1"
   ],
   "dependencies": {
+    "com.unity.cinemachine": "3.1.7",
     "com.unity.graphtoolkit": "0.4.0-exp.2",
     "com.unity.inputsystem": "1.20.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.animation": "1.0.0",
     "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.particlesystem": "1.0.0",
     "com.unity.modules.physics": "1.0.0",
     "com.unity.render-pipelines.universal": "17.3.0",
     "com.unity.ugui": "2.0.0"

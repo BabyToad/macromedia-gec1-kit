@@ -9,13 +9,16 @@ namespace Kit
     // oder A/Kreuz; Antworten mit 1/2/3 oder X/Y/B am Gamepad. Es zeigt immer nur EINE Zeile:
     // Kommt eine neue, während eine offen ist, wird die alte abgebrochen.
     // Jede gezeigte Zeile bekommt eine Nummer (Token). Schließen kann nur, wer diese Nummer hat –
-    // so kann eine Interaktion nie die Zeile einer anderen wegnehmen.
+    // so kann eine Logik nie die Zeile einer anderen wegnehmen.
     // Anlegen: GameObject > Kit > Dialogfenster.
-    [AddComponentMenu("Kit/Dialogfenster")]
+    [AddComponentMenu(KitBrand.ComponentMenu + "Dialogfenster")]
     public class KitDialogBox : MonoBehaviour
     {
+        [Hint("Das Fensterobjekt: wird beim Zeigen ein- und beim Schließen ausgeschaltet. Richtet das Prefab ein.", label: "Fenster")]
         public GameObject panel;
-        public TMP_Text speaker, line;
+        [Hint("Textfeld für den Namen des Sprechers. Richtet das Prefab ein.", label: "Sprecher")] public TMP_Text speaker;
+        [Hint("Textfeld für das Gesagte. Richtet das Prefab ein.", label: "Zeile")] public TMP_Text line;
+        [Hint("Bis zu drei Textfelder für die Antworten, in der Reihenfolge 1, 2, 3. Unbenutzte werden ausgeblendet. Richtet das Prefab ein.", label: "Antworten")]
         public TMP_Text[] answers = new TMP_Text[3];
 
         public const int Next = -1, Cancelled = -2, Gone = -3;
@@ -23,6 +26,7 @@ namespace Kit
         /// <summary>Done callback: -1 = weiter, 0..2 = Antwort, -2 = von einer anderen Zeile verdrängt, -3 = Fenster ausgeschaltet oder gelöscht.</summary>
         Action<int> m_Done;
         int m_Token, m_AnswerCount;
+        readonly bool[] m_Used = new bool[8];   // which answer keys lead somewhere (an empty Antwort A is hidden, its key does nothing)
         float m_OpenedAt;
 
         public bool IsOpen => m_Done != null;
@@ -41,12 +45,14 @@ namespace Kit
             m_Done = done;
             int token = ++m_Token;
             m_AnswerCount = 0;
+            System.Array.Clear(m_Used, 0, m_Used.Length);
             if (speaker) speaker.text = who;
             if (line) line.text = text;
             for (int i = 0; i < answers.Length; i++)
             {
                 bool used = i < choices.Length && !string.IsNullOrEmpty(choices[i]);
                 if (used) m_AnswerCount = i + 1;
+                if (i < m_Used.Length) m_Used[i] = used;
                 if (answers[i]) { answers[i].gameObject.SetActive(used); answers[i].text = used ? $"{i + 1}  {choices[i]}" : ""; }
             }
             if (panel) panel.SetActive(true);
@@ -83,6 +89,7 @@ namespace Kit
             if (m_AnswerCount > 0 && choice < 0) return;          // es gibt Antworten: "weiter" reicht nicht
             if (m_AnswerCount == 0 && choice >= 0) choice = Next; // keine Antworten: jede Taste ist "weiter"
             if (choice >= m_AnswerCount) return;
+            if (choice >= 0 && (choice >= m_Used.Length || !m_Used[choice])) return;   // hidden answer: its key is ignored
             var done = m_Done;
             m_Done = null;
             if (panel) panel.SetActive(false);

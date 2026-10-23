@@ -98,8 +98,8 @@ namespace Kit.Editor
 
         static void WriteIfMissing(string path, string text) { if (!File.Exists(path)) File.WriteAllText(path, text); }
 
-        [MenuItem("Assets/Create/Kit/Eigener Knoten (C#)", priority = 81)]
-        [MenuItem("Tools/Kit/Eigener Knoten (C#)")]
+        [MenuItem(KitBrand.CreateMenu + "Eigener Knoten (C#)", priority = 81)]
+        [MenuItem(KitBrand.ToolsMenu + "Eigener Knoten (C#)")]
         static void CreateMenu()
         {
             KitPaths.EnsureFolder(Folder);
@@ -146,11 +146,11 @@ using Kit;
 [NodeInfo(""KNOTENNAME"", ""Aktion"", ""Was der Knoten tut"")]
 public class KNOTENNAME : KitNode
 {
-    // ◆ Platz für ein Objekt der Szene. Die Interaktion füllt ihn.
+    // ◆ Platz für ein Objekt der Szene: eine Rolle. Welches Objekt sie spielt, steht in der Logik.
     [Ref(""Objekt"")] public GameObject target;
 
-    // Einstellung, im Knoten einstellbar.
-    [Setting(""Stärke"")] public float strength = 1f;
+    // Einstellung, im Knoten einstellbar. [Hint] ist ihr Tooltip: was sie bewirkt, Einheit, sinnvoller Bereich.
+    [Setting(""Stärke"")] [Hint(""Wie stark der Knoten wirkt."", range: ""0,5 bis 3"")] public float strength = 1f;
 
     // ▶ Ausgang: feuert, wenn der Knoten seine Arbeit getan hat.
     [Output(""Fertig"")] [NonSerialized] public Output done;

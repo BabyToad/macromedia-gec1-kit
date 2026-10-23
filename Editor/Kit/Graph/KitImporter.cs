@@ -6,14 +6,14 @@ using UnityEngine;
 
 namespace Kit.Editor
 {
-    /// <summary>Turns a .kit graph into the playable <see cref="KitGraph"/> that an Interaction runs.</summary>
-    [ScriptedImporter(3, KitEditorGraph.Extension)]
+    /// <summary>Turns a .kit graph file into the playable <see cref="LogicGraph"/> that a Logik component runs.</summary>
+    [ScriptedImporter(4, KitEditorGraph.Extension)]   // 4: v0.4 (LogicGraph, Dieses Objekt)
     public class KitImporter : ScriptedImporter
     {
         public override void OnImportAsset(AssetImportContext ctx)
         {
             var graph = GraphDatabase.LoadGraphForImporter<KitEditorGraph>(ctx.assetPath);
-            if (graph == null) { ctx.LogImportError($"{ctx.assetPath}: kein Kit-Graph"); return; }
+            if (graph == null) { ctx.LogImportError($"{ctx.assetPath}: kein Logik-Graph"); return; }
             var result = KitGraphBuilder.Build(graph, out var problems);
             foreach (var p in problems) ctx.LogImportWarning($"{System.IO.Path.GetFileNameWithoutExtension(ctx.assetPath)}: {p}");
             result.name = System.IO.Path.GetFileNameWithoutExtension(ctx.assetPath);
@@ -22,14 +22,25 @@ namespace Kit.Editor
         }
     }
 
+    /// <summary>After a graph file was (re)imported: scenes whose Logik play it get their Rollen tidied (nodes may be gone or new).</summary>
+    class KitGraphImportWatcher : UnityEditor.AssetPostprocessor
+    {
+        static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+        {
+            foreach (var path in imported)
+                if (path.EndsWith("." + KitEditorGraph.Extension))
+                    KitRoles.GraphImported(UnityEditor.AssetDatabase.LoadAssetAtPath<LogicGraph>(path));
+        }
+    }
+
     /// <summary>Editor graph → runtime graph. Also used by the checks while editing.</summary>
     public static class KitGraphBuilder
     {
-        public static KitGraph Build(KitEditorGraph graph, out List<string> problems)
+        public static LogicGraph Build(KitEditorGraph graph, out List<string> problems)
         {
             problems = new List<string>();
             graph.SyncWireOrders();
-            var rt = ScriptableObject.CreateInstance<KitGraph>();
+            var rt = ScriptableObject.CreateInstance<LogicGraph>();
             var kitNodes = graph.GetNodes().OfType<KitEditorNode>().ToList();
             var index = new Dictionary<INode, int>();
             var objectLabels = new Dictionary<string, string>();
@@ -68,6 +79,7 @@ namespace Kit.Editor
                         if (port.dataType == typeof(RefPort))
                         {
                             if (srcNode is ObjectNode on) rt.ConnectSlot(KitIds.Of(on), to, port.name);
+                            else if (srcNode is SelfNode) rt.ConnectSlot(LogicGraph.SelfSlot, to, port.name);
                             else if (index.TryGetValue(srcNode, out int from)) rt.ConnectEventRef(from, src.name, to, port.name);
                         }
                         else if (index.TryGetValue(srcNode, out int from)) rt.ConnectData(from, src.name, to, port.name);
@@ -83,7 +95,7 @@ namespace Kit.Editor
                     {
                         if (!index.TryGetValue(dst.GetNode(), out int target)) continue;
                         int order = graph.OrderOf(KitIds.Of(n), port.name, KitIds.Of((Node)dst.GetNode()), dst.name);
-                        rt.wires.Add(new KitGraph.Wire { from = to, fromPort = port.name, to = target, toPort = dst.name, order = order });
+                        rt.wires.Add(new LogicGraph.Wire { from = to, fromPort = port.name, to = target, toPort = dst.name, order = order });
                     }
                 }
             }
@@ -91,7 +103,7 @@ namespace Kit.Editor
             for (int i = 0; i < rt.nodes.Count; i++)
                 foreach (var r in NodeSchema.Of(rt.nodes[i].GetType()).Refs)
                     if (r.Permanent && rt.IsEventRef(i, r.Id, out var l))
-                        problems.Add($"„{rt.nodes[i].title}“: " + Interaction.PermanentProblem(r.Label, rt.nodes[l.from].title));
+                        problems.Add($"„{rt.nodes[i].title}“: " + Logic.PermanentProblem(r.Label, rt.nodes[l.from].title));
             problems.AddRange(KitGraphCheck.DataCycles(rt));
             return rt;
         }
@@ -105,7 +117,7 @@ namespace Kit.Editor
             foreach (var o in graph.GetNodes().OfType<ObjectNode>())
             {
                 var outPort = o.GetOutputPortByName(ObjectNode.Out);
-                if (outPort != null && !outPort.isConnected) log.LogWarning("Objekt-Knoten ist mit nichts verbunden.", o);
+                if (outPort != null && !outPort.isConnected) log.LogWarning($"Rolle „{o.Label}“ ist mit nichts verbunden.", o);
             }
             var rt = KitGraphBuilder.Build(graph, out var problems);
             foreach (var p in problems) log.LogError(p, graph);
@@ -113,9 +125,9 @@ namespace Kit.Editor
         }
 
         /// <summary>● wires that run in a circle can never be read. Lists each circle once.</summary>
-        public static IEnumerable<string> DataCycles(KitGraph g)
+        public static IEnumerable<string> DataCycles(LogicGraph g)
         {
-            var edges = g.links.Where(l => l.kind == KitGraph.LinkKind.Data).ToList();
+            var edges = g.links.Where(l => l.kind == LogicGraph.LinkKind.Data).ToList();
             var state = new int[g.nodes.Count];   // 0 unseen, 1 on stack, 2 done
             var found = new List<string>();
             void Visit(int n)

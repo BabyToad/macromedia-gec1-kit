@@ -18,14 +18,18 @@ namespace Kit.Editor
         // any scene that uses the graph, e.g. a copied example scene – stay valid when it is rebuilt.
         static Hash128 Id(string role) => Hash128.Compute("de.macromedia.gec1/Schlüssel und Tür/" + role);
 
-        /// <summary>Draws the graph: same nodes and wires as on the v3 board.</summary>
-        public static KitGraph BuildKeyDoorGraph(string path)
+        /// <summary>
+        /// Draws the graph: same nodes and wires as on the v3 board, except that the Logik sits on the door, so
+        /// „Dieses Objekt“ is what Bewegen moves (Day 3: "Tür auswählen, Add Component › Logik").
+        /// </summary>
+        public static LogicGraph BuildKeyDoorGraph(string path)
         {
             var g = KitGraphEditing.CreateAsset(path);
+            var self = KitGraphEditing.AddNode<SelfNode>(g, new Vector2(560, 700), Id("self"));
             var key = KitGraphEditing.AddNode<ObjectNode>(g, new Vector2(0, 140), Id("key"));
             KitGraphEditing.SetOption(key, ObjectNode.NameOption, "Schlüssel");
             var use = KitGraphEditing.AddNode<InteractNode>(g, new Vector2(260, 0), Id("use"));
-            var flag = KitGraphEditing.AddNode<FlagNode>(g, new Vector2(560, -40), Id("flag"));
+            var flag = KitGraphEditing.AddNode<FlagVariableNode>(g, new Vector2(560, -280), Id("flag"));
             KitGraphEditing.SetOption(flag, "label", "Schlüssel vorhanden");
             var hide = KitGraphEditing.AddNode<SetActiveNode>(g, new Vector2(560, 190), Id("hide"));
             var zone = KitGraphEditing.AddNode<ZoneNode>(g, new Vector2(260, 420), Id("zone"));
@@ -42,15 +46,16 @@ namespace Kit.Editor
             KitGraphEditing.Connect(g, use, "used", flag, "SetTrue");     // 1.
             KitGraphEditing.Connect(g, use, "used", hide, "Off");         // 2.
             KitGraphEditing.Connect(g, zone, "entered", branch, "Check");
-            KitGraphEditing.Connect(g, flag, "value", branch, "condition");
+            KitGraphEditing.Connect(g, flag, "Value", branch, "condition");
+            KitGraphEditing.Connect(g, self, SelfNode.Out, move, "target");
             KitGraphEditing.Connect(g, branch, "yes", move, "Forward");
             KitGraphEditing.Connect(g, branch, "no", sign, "Write");
             KitGraphEditing.Connect(g, move, "arrived", sound, "Play");
             KitGraphEditing.Save(g);
-            return AssetDatabase.LoadAssetAtPath<KitGraph>(path);
+            return AssetDatabase.LoadAssetAtPath<LogicGraph>(path);
         }
 
-        [MenuItem("Tools/Kit/Beispiel „Schlüssel und Tür“ bauen")]
+        [MenuItem(KitBrand.ToolsMenu + "Beispiel „Schlüssel und Tür“ bauen")]
         static void BuildMenu() => BuildAll();
 
         /// <summary>
@@ -76,6 +81,14 @@ namespace Kit.Editor
         {
             if (!KitPaths.OpenScenesSafe()) return null;
             string graphPath = folder + "/Schlüssel und Tür.kit", scenePath = folder + "/Keller.unity";
+            if (whenExisting == KitPaths.Existing.Overwrite && IsBeforeDoorLogik(graphPath))
+            {
+                // Copies of the old example scene carry the Logik on the group root and bind the door to Bewegen.
+                // Rebuilt in place, their Bewegen would take „Dieses Objekt“ and move the whole group: keep the old one.
+                Debug.Log(KitBrand.Log + "„Schlüssel und Tür“ ist noch die alte Fassung (Logik auf der Gruppe). " +
+                          "Sie bleibt unverändert, das neue Beispiel kommt in einen eigenen Ordner.");
+                whenExisting = KitPaths.Existing.NewCopy;
+            }
             if (ExampleExists(folder))
             {
                 switch (whenExisting)
@@ -104,7 +117,6 @@ namespace Kit.Editor
             player.transform.position = new Vector3(0, 0, -6);
 
             var root = new GameObject("Schlüssel und Tür");
-            var it = root.AddComponent<Interaction>(); it.Graph = graph;
             var key = GameObject.CreatePrimitive(PrimitiveType.Cube); key.name = "Schlüssel"; key.transform.SetParent(root.transform);
             key.GetComponent<Renderer>().sharedMaterial = KitMaterials.Colored(folder + "/Schlüssel.mat", new Color(0.9f, 0.72f, 0.2f), replace);
             key.transform.position = new Vector3(3, 0.4f, -3); key.transform.localScale = new Vector3(0.2f, 0.2f, 0.6f);
@@ -114,6 +126,7 @@ namespace Kit.Editor
             var door = GameObject.CreatePrimitive(PrimitiveType.Cube); door.name = "Tür"; door.transform.SetParent(root.transform);
             door.GetComponent<Renderer>().sharedMaterial = KitMaterials.Colored(folder + "/Tür.mat", new Color(0.45f, 0.3f, 0.2f), replace);
             door.transform.position = new Vector3(0, 1.5f, 2); door.transform.localScale = new Vector3(3, 3, 0.2f);
+            var it = door.AddComponent<Logic>(); it.Graph = graph;   // the door is „Dieses Objekt“; the others are Rollen
             var sign = new GameObject("Schild"); sign.transform.SetParent(root.transform);
             sign.transform.position = new Vector3(2.2f, 2, 1.8f);
             var tmp = sign.AddComponent<TMPro.TextMeshPro>(); tmp.fontSize = 3; tmp.text = "";
@@ -121,24 +134,37 @@ namespace Kit.Editor
             klack.transform.position = door.transform.position;
             var src = klack.AddComponent<AudioSource>(); src.playOnAwake = false; src.clip = clip;
 
+            // Creating the materials and the sound refreshes the asset database, which re-imports the graph file and
+            // replaces the graph object loaded above: take the current one, so the Logik (and its Rollen) see it.
+            graph = AssetDatabase.LoadAssetAtPath<LogicGraph>(graphPath);
+            it.Graph = graph;
             foreach (var slot in graph.slots)
             {
                 var user = slot.users[0].Split('/');
                 var node = graph.nodes[graph.IndexOf(user[0])];
                 Object target = slot.label == "Schlüssel" ? key
-                    : node is Zone ? zone : node is Move ? door : node is SetText ? sign : node is PlaySound ? klack : null;
+                    : node is Zone ? zone : node is SetText ? sign : node is PlaySound ? klack : null;
                 if (target) it.SetBinding(slot.id, target);
             }
+            KitRoles.Reconcile(scene);   // bound directly (no Inspector), so give the objects their Rolle before saving
             EditorSceneManager.SaveScene(scene, scenePath);
             Debug.Log($"[KitDemo] {graphPath} + {scenePath}: {graph.nodes.Count} Knoten, {graph.slots.Count} Slots");
             return scenePath;
+        }
+
+        /// <summary>The graph at <paramref name="graphPath"/> is the example from before v0.5: Bewegen has its own door binding instead of „Dieses Objekt“.</summary>
+        static bool IsBeforeDoorLogik(string graphPath)
+        {
+            var graph = File.Exists(graphPath) ? AssetDatabase.LoadAssetAtPath<LogicGraph>(graphPath) : null;
+            int move = graph ? graph.nodes.FindIndex(n => n is Move) : -1;
+            return move >= 0 && graph.SlotFor(move, "target") != LogicGraph.SelfSlot;
         }
 
         /// <summary>
         /// Overwrite keeps the asset: the fresh graph is built next to it and its content copied over the old file.
         /// The .meta (and so the GUID) stays, and the fixed node ids keep the slots: other scenes still find the graph.
         /// </summary>
-        static KitGraph RebuildInPlace(string graphPath)
+        static LogicGraph RebuildInPlace(string graphPath)
         {
             // A free name: a file the student happens to have under this name is never touched.
             string fresh = AssetDatabase.GenerateUniqueAssetPath(Path.GetDirectoryName(graphPath).Replace('\\', '/') + "/Schlüssel und Tür (neu gebaut).kit");
@@ -146,7 +172,7 @@ namespace Kit.Editor
             File.Copy(fresh, graphPath, overwrite: true);
             AssetDatabase.DeleteAsset(fresh);
             AssetDatabase.ImportAsset(graphPath, ImportAssetOptions.ForceUpdate);
-            return AssetDatabase.LoadAssetAtPath<KitGraph>(graphPath);
+            return AssetDatabase.LoadAssetAtPath<LogicGraph>(graphPath);
         }
 
         static AudioClip WriteClick(string path)

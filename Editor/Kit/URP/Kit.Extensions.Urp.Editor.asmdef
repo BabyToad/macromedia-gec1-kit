@@ -1,0 +1,11 @@
+{
+    "name": "Kit.Extensions.Urp.Editor",
+    "rootNamespace": "Kit.Editor",
+    "references": ["Kit.Runtime", "Kit.Editor", "Kit.Extensions.Urp", "Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime", "Unity.GraphToolkit.Editor", "Unity.GraphToolkit.Common.Editor"],
+    "includePlatforms": ["Editor"],
+    "autoReferenced": true,
+    "defineConstraints": ["KIT_URP"],
+    "versionDefines": [
+        { "name": "com.unity.render-pipelines.universal", "expression": "17.0.0", "define": "KIT_URP" }
+    ]
+}

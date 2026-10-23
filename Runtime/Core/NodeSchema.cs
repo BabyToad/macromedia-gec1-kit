@@ -15,12 +15,21 @@ namespace Kit
             public MemberInfo Member;
             public bool Optional, EventLocal, Permanent;
             public bool SkipRefs;      // ▶ input that does not use the ◆ references (InputAttribute.UsesRefs = false)
+            /// <summary>The member's [Hint], or null (a test makes sure every student-facing member has one).</summary>
+            public HintAttribute Hint => HintAttribute.Of(Member);
+            public string Tooltip => Hint?.Text;
+            /// <summary>The label as shown: "Dauer (s)". Units live in the [Hint], so every label shows them the same way.</summary>
+            public string Shown => Hint?.Unit is string u && !string.IsNullOrEmpty(u) && !Label.EndsWith(")") ? $"{Label} ({u})" : Label;
             public object Get(object node) => Member is FieldInfo f ? f.GetValue(node) : ((PropertyInfo)Member).GetValue(node);
             public void Set(object node, object v) { if (Member is FieldInfo f) f.SetValue(node, v); }
         }
 
         public readonly Type NodeType;
         public readonly string Title, Group, Summary;
+        /// <summary>Tooltip of the whole node: the summary, plus the class's [Hint] if it has one.</summary>
+        public string Tooltip => HintAttribute.Of(NodeType) is HintAttribute h ? (string.IsNullOrEmpty(Summary) ? h.Text : Summary + "\n" + h.Text) : Summary;
+        /// <summary>Every port and setting, for sweeps (tooltips, tests).</summary>
+        public IEnumerable<Port> All => Inputs.Concat(Outputs).Concat(Refs).Concat(RefOuts).Concat(DataIns).Concat(DataOuts).Concat(Settings);
         public readonly List<Port> Inputs = new List<Port>();     // ▶ methods
         public readonly List<Port> Outputs = new List<Port>();    // ▶ Output fields
         public readonly List<Port> Refs = new List<Port>();       // ◆ in

@@ -7,10 +7,10 @@ namespace Kit
     /// <summary>One thing that happened inside an interaction. The editor draws the graph from these.</summary>
     public struct TraceEntry
     {
-        public Interaction runner;   // which instance (two doors = two runners)
+        public Logic runner;   // which instance (two doors = two runners)
         public TraceKind kind;
         public int node;             // Status: the node; Wire: the target node
-        public int wire;             // Wire: index into KitGraph.wires, else -1
+        public int wire;             // Wire: index into LogicGraph.wires, else -1
         public NodeStatus status;
         public string text;
         public float progress;
@@ -31,7 +31,7 @@ namespace Kit
 
         internal static void Emit(in TraceEntry e)
         {
-            if (LogToConsole) UnityEngine.Debug.Log($"[Kit] {e.runner?.name} {e.kind} n{e.node} w{e.wire} {e.status} {e.text}", e.runner);
+            if (LogToConsole) UnityEngine.Debug.Log($"{KitBrand.Log}{e.runner?.name} {e.kind} n{e.node} w{e.wire} {e.status} {e.text}", e.runner);
             Step?.Invoke(e);
         }
     }

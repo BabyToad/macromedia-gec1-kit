@@ -32,8 +32,20 @@ namespace Kit.Editor
         [SerializeField] List<WireOrder> m_WireOrders = new List<WireOrder>();
         public IReadOnlyList<WireOrder> WireOrders => m_WireOrders;
 
-        [MenuItem("Assets/Create/Kit/Interaktion (Graph)", priority = 80)]
-        static void Create() => GraphDatabase.PromptInProjectBrowserToCreateNewAsset<KitEditorGraph>("Neue Interaktion");
+        [MenuItem(KitBrand.CreateMenu + "Logik-Graph", priority = 80)]
+        static void Create() =>
+            ProjectWindowUtil.StartNameEditingIfProjectWindowExists(0, ScriptableObject.CreateInstance<CreateAction>(), "Neuer Logik-Graph." + Extension, null, null);
+
+        /// <summary>After the student named the new file in the Project window: a graph that starts with "Dieses Objekt", like "Neu" on a Logik.</summary>
+        class CreateAction : UnityEditor.ProjectWindowCallback.EndNameEditAction
+        {
+            public override void Action(int instanceId, string pathName, string resourceFile)
+            {
+                var g = KitGraphEditing.CreateAsset(pathName);
+                KitWindows.SeedSelf(g);
+                ProjectWindowUtil.ShowCreatedAsset(AssetDatabase.LoadMainAssetAtPath(pathName));
+            }
+        }
 
         public override void OnGraphChanged(GraphLogger log)
         {

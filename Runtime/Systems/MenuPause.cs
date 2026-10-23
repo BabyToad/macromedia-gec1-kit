@@ -7,16 +7,19 @@ namespace Kit
     // Pause und Weiter: für Menüs. Pause hält den Spieler an und gibt den Mauszeiger frei, damit UI-Knöpfe
     // klickbar sind; auf Wunsch steht auch die Zeit still. Weiter hebt alle offenen Pausen wieder auf: der Spieler
     // läuft, der Mauszeiger ist wieder gefangen, die Zeit läuft im Tempo von vorher.
-    // Jeder Pause-Knoten hält mit sich selbst als Besitzer an. Hört seine Interaktion auf (auch beim Laden einer
+    // Jeder Pause-Knoten hält mit sich selbst als Besitzer an. Hört seine Logik auf (auch beim Laden einer
     // anderen Szene), gibt er seine Pause frei. Ein Dialog hält den Spieler davon unabhängig an, und ein Spieler,
     // der schon vorher aus war, bleibt aus.
     [Serializable]
-    [NodeInfo("Pause", "Spielsysteme", "Spieler anhalten, Mauszeiger frei (für Menüs)")]
+    [NodeInfo("Pause", KitGroups.Spielsysteme, "Spieler anhalten, Mauszeiger frei (für Menüs)")]
     public class MenuPause : KitNode
     {
+        [Hint("Der Spieler, der anhält.", edges: "Leer: der erste Spieler, der in der Szene gefunden wird.")]
         [Ref("Spieler", Optional = true)] public KitPlayer player;
+        [Hint("An: auch die Spielzeit steht still (Bewegen, Warten, Physik; ein Warten mit „Echtzeit“ läuft weiter). Aus: nur der Spieler hält an, alles andere läuft weiter.")]
         [Setting("Zeit anhalten")] public bool stopTime = false;
 
+        [Hint("Feuert, sobald der Spieler steht und der Mauszeiger frei ist.")]
         [Output("Pausiert")] [NonSerialized] public Output paused;
 
         static readonly List<MenuPause> s_Open = new List<MenuPause>();   // offene Pausen (Knoten-Kopien)
@@ -27,6 +30,7 @@ namespace Kit
 
         public static int OpenCount => s_Open.Count;
 
+        [Hint("Hält den Spieler an und gibt den Mauszeiger frei, damit Knöpfe klickbar sind.")]
         [Input("Pausieren")]
         public void Pause(Signal s)
         {
@@ -40,7 +44,7 @@ namespace Kit
             paused.Fire(s);
         }
 
-        /// <summary>Gibt diese eine Pause frei (Weiter, oder die Interaktion hört auf).</summary>
+        /// <summary>Gibt diese eine Pause frei (Weiter, oder die Logik hört auf).</summary>
         internal void ReleaseOwn()
         {
             if (m_Held) m_Held.Resume(this);                          // läuft er wieder, fängt er den Mauszeiger selbst
@@ -61,11 +65,13 @@ namespace Kit
     }
 
     [Serializable]
-    [NodeInfo("Weiter", "Spielsysteme", "Pause aufheben: Spieler läuft, Mauszeiger gefangen")]
+    [NodeInfo("Weiter", KitGroups.Spielsysteme, "Pause aufheben: Spieler läuft, Mauszeiger gefangen")]
     public class MenuResume : KitNode
     {
+        [Hint("Feuert, nachdem die Pausen aufgehoben sind, auch wenn keine offen war.")]
         [Output("Fortgesetzt")] [NonSerialized] public Output resumed;
 
+        [Hint("Hebt alle Pausen der Pause-Knoten auf. Läuft der Spieler dann wieder, wird der Mauszeiger gefangen. Ein offener Dialog oder ein laufendes „Anhalten“ können Spieler, Mauszeiger oder Zeit weiter halten.")]
         [Input("Fortsetzen")]
         public void Resume(Signal s)
         {

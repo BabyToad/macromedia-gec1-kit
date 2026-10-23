@@ -1,7 +1,7 @@
 {
     "name": "Kit.Extensions.Cinemachine.Editor",
     "rootNamespace": "Kit.Editor",
-    "references": ["Kit.Runtime", "Kit.Editor", "Kit.Extensions.Cinemachine", "Unity.GraphToolkit.Editor", "Unity.GraphToolkit.Common.Editor"],
+    "references": ["Kit.Runtime", "Kit.Player", "Kit.Editor", "Kit.Extensions.Cinemachine", "Unity.Cinemachine", "Unity.GraphToolkit.Editor", "Unity.GraphToolkit.Common.Editor"],
     "includePlatforms": ["Editor"],
     "autoReferenced": true,
     "defineConstraints": ["KIT_CINEMACHINE"],

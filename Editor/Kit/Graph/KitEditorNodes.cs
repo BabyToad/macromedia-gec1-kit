@@ -31,7 +31,11 @@ namespace Kit.Editor
         {
             var defaults = Activator.CreateInstance(RuntimeType);
             foreach (var s in Schema.Settings)
-                context.AddOption(s.Id, s.Type).WithDisplayName(s.Label).WithDefaultValue(s.Get(defaults)).Delayed().Build();
+            {
+                var option = context.AddOption(s.Id, s.Type).WithDisplayName(s.Shown).WithDefaultValue(s.Get(defaults)).Delayed();
+                if (s.Tooltip != null) option = option.WithTooltip(s.Tooltip);
+                option.Build();
+            }
         }
 
         protected override void OnDefinePorts(IPortDefinitionContext context)
@@ -40,14 +44,14 @@ namespace Kit.Editor
             foreach (var p in Schema.Inputs)
                 context.AddInputPort<EventPort>(p.Id).WithDisplayName(p.Label).WithConnectorUI(PortConnectorUI.Arrowhead).Build();
             foreach (var p in Schema.DataIns)
-                context.AddInputPort(p.Id).WithDataType(p.Type).WithDisplayName(p.Label).WithDefaultValue(p.Get(defaults)).Build();
+                context.AddInputPort(p.Id).WithDataType(p.Type).WithDisplayName(p.Shown).WithDefaultValue(p.Get(defaults)).Build();
             foreach (var p in Schema.Refs)
                 context.AddInputPort<RefPort>(p.Id).WithDisplayName("◆ " + p.Label).Build();
 
             foreach (var p in Schema.Outputs)
                 context.AddOutputPort<EventPort>(p.Id).WithDisplayName(p.Label).WithConnectorUI(PortConnectorUI.Arrowhead).Build();
             foreach (var p in Schema.DataOuts)
-                context.AddOutputPort(p.Id).WithDataType(p.Type).WithDisplayName(p.Label).Build();
+                context.AddOutputPort(p.Id).WithDataType(p.Type).WithDisplayName(p.Shown).Build();
             foreach (var p in Schema.RefOuts)
                 context.AddOutputPort<RefPort>(p.Id).WithDisplayName("◆ " + p.Label).Build();
         }
@@ -61,25 +65,48 @@ namespace Kit.Editor
     }
 
     /// <summary>
-    /// "Objekt": one scene object that several nodes use. Its ◆ output goes to each of them; the
-    /// interaction's binding table says which object it is. (A node that alone uses an object binds it
-    /// directly on its own ◆ chip and needs no Objekt node.)
+    /// A named Rolle: one scene object that several nodes use ("Tür"). Its ◆ output goes to each of them; the
+    /// Logik's role table says which object plays it. (A node that alone uses an object has its own ◆ chip and
+    /// needs no Rolle node.) C# name kept from v0.3 ("Objekt") so existing graph files load unchanged.
     /// </summary>
     [Serializable]
     public class ObjectNode : Node
     {
-        public const string Out = "object", NameOption = "label";
+        public const string Out = "object", NameOption = "label", DefaultLabel = "Rolle";
+        public const string Tip = "◆ Eine Rolle: ein Objekt aus der Szene, das mehrere Knoten benutzen.\n" +
+                                  "Welches Objekt die Rolle spielt, steht in der Logik-Komponente (Inspector) oder auf dem Chip.";
 
         protected override void OnDefineOptions(IOptionDefinitionContext context) =>
-            context.AddOption<string>(NameOption).WithDisplayName("Name").WithDefaultValue("Objekt").Delayed().Build();
+            context.AddOption<string>(NameOption).WithDisplayName("Name").WithDefaultValue(DefaultLabel)
+                .WithTooltip("Name der Rolle, z.B. „Tür“ oder „Schlüssel“. So heißt sie im Inspector und auf dem Objekt.").Delayed().Build();
 
         protected override void OnDefinePorts(IPortDefinitionContext context) =>
-            context.AddOutputPort<RefPort>(Out).WithDisplayName("◆ Objekt").Build();
+            context.AddOutputPort<RefPort>(Out).WithDisplayName("◆").Build();
 
         public string Label
         {
-            get { var o = GetNodeOptionByName(NameOption); return o != null && o.TryGetValue(out string s) && !string.IsNullOrEmpty(s) ? s : "Objekt"; }
+            get
+            {
+                var o = GetNodeOptionByName(NameOption);
+                // v0.3 graphs stored the old default "Objekt": show it as the new default.
+                return o != null && o.TryGetValue(out string s) && !string.IsNullOrEmpty(s) && s != "Objekt" ? s : DefaultLabel;
+            }
         }
+    }
+
+    /// <summary>
+    /// "Dieses Objekt": the GameObject the Logik sits on, like <c>gameObject</c> in a script. Nothing to bind: the
+    /// same graph on two doors means each door itself. New graphs start with one.
+    /// </summary>
+    [Serializable]
+    public class SelfNode : Node
+    {
+        public const string Out = "self";
+        public const string Tip = "◆ Dieses Objekt: das Objekt, auf dem die Logik-Komponente sitzt (im Code: gameObject).\n" +
+                                  "Muss nicht gebunden werden. Liegt derselbe Graph auf zwei Türen, ist es jeweils die eigene Tür.";
+
+        protected override void OnDefinePorts(IPortDefinitionContext context) =>
+            context.AddOutputPort<RefPort>(Out).WithDisplayName("◆").Build();
     }
 
     /// <summary>Reads typed values from GTK options and ports without knowing the type at compile time.</summary>
@@ -113,8 +140,6 @@ namespace Kit.Editor
     [Serializable] public class CooldownNode : KitEditorNode { public override Type RuntimeType => typeof(Cooldown); }
     [Serializable] public class RandomPickNode : KitEditorNode { public override Type RuntimeType => typeof(RandomPick); }
     [Serializable] public class BranchNode : KitEditorNode { public override Type RuntimeType => typeof(Branch); }
-    [Serializable] public class FlagNode : KitEditorNode { public override Type RuntimeType => typeof(Flag); }
-    [Serializable] public class CounterNode : KitEditorNode { public override Type RuntimeType => typeof(Counter); }
     [Serializable] public class CompareNode : KitEditorNode { public override Type RuntimeType => typeof(Compare); }
     [Serializable] public class SetActiveNode : KitEditorNode { public override Type RuntimeType => typeof(SetActive); }
     [Serializable] public class MoveNode : KitEditorNode { public override Type RuntimeType => typeof(Move); }
@@ -122,18 +147,14 @@ namespace Kit.Editor
     [Serializable] public class PushNode : KitEditorNode { public override Type RuntimeType => typeof(Push); }
     [Serializable] public class SpawnNode : KitEditorNode { public override Type RuntimeType => typeof(Spawn); }
     [Serializable] public class SetTextNode : KitEditorNode { public override Type RuntimeType => typeof(SetText); }
-    [Serializable] public class LoadSceneNode : KitEditorNode { public override Type RuntimeType => typeof(LoadScene); }
     [Serializable] public class NoteNode : KitEditorNode { public override Type RuntimeType => typeof(Note); }
     [Serializable] public class HitstopNode : KitEditorNode { public override Type RuntimeType => typeof(Hitstop); }
 
     // ---- Spielsysteme -------------------------------------------------------------------------------
-    [Serializable] public class HealthNode : KitEditorNode { public override Type RuntimeType => typeof(Health); }
     [Serializable] public class InventoryNode : KitEditorNode { public override Type RuntimeType => typeof(Inventory); }
     [Serializable] public class DialogNode : KitEditorNode { public override Type RuntimeType => typeof(Dialog); }
     [Serializable] public class CheckpointNode : KitEditorNode { public override Type RuntimeType => typeof(Checkpoint); }
-    [Serializable] public class HudDisplayNode : KitEditorNode { public override Type RuntimeType => typeof(HudDisplay); }
     [Serializable] public class WalkToNode : KitEditorNode { public override Type RuntimeType => typeof(WalkTo); }
-    [Serializable] public class SharedFlagNode : KitEditorNode { public override Type RuntimeType => typeof(SharedFlag); }
     [Serializable] public class PlayerShakeNode : KitEditorNode { public override Type RuntimeType => typeof(PlayerShake); }
     [Serializable] public class UiButtonNode : KitEditorNode { public override Type RuntimeType => typeof(UiButton); }
     [Serializable] public class MenuPauseNode : KitEditorNode { public override Type RuntimeType => typeof(MenuPause); }

@@ -78,7 +78,7 @@ namespace Kit.Editor
                 var command = Activator.CreateInstance(s_Command);
                 var list = (IList)s_Command.GetField("CreationData").GetValue(command);
                 list.Add(data);
-                s_Command.GetProperty("UndoString", k_Any)?.SetValue(command, "Kit: Knoten anlegen");
+                s_Command.GetProperty("UndoString", k_Any)?.SetValue(command, KitBrand.Name + ": Knoten anlegen");
 
                 var dispatch = view.GetType().GetMethods(k_Any).First(m => m.Name == "Dispatch" && m.GetParameters().Length == 2);
                 dispatch.Invoke(view, new[] { command, Enum.ToObject(dispatch.GetParameters()[1].ParameterType, 0) });

@@ -3,9 +3,18 @@ using UnityEngine;
 
 namespace Kit.Editor
 {
-    /// <summary>Builds the kit's player prefab: CharacterController, KitPlayer, head pivot, camera.</summary>
+    /// <summary>
+    /// The kit's player. The package ships Player/Spieler.prefab (read-only in student projects); students work with a
+    /// <b>Prefab Variant</b> of it, Assets/Spieler.prefab, which the course template already contains. A variant keeps
+    /// every change the student makes (speed, camera, a different body) and still receives the kit's fixes on update.
+    /// "Spieler-Variante anlegen" makes that variant if it is missing; "Spieler-Prefab neu bauen" rebuilds the shipped
+    /// prefab itself and exists only in the studio project.
+    /// </summary>
     public static class KitPlayerPrefab
     {
+        /// <summary>Where the student's variant lives (the template ships it there).</summary>
+        public const string VariantPath = "Assets/Spieler.prefab";
+
         /// <summary>GUID of the shipped Player/Spieler.prefab (stable: the package keeps the .meta files).</summary>
         public const string Guid = "c689fda3acbe5a6419b1e48ea86ebdad";
         const string StudioPath = "Assets/Kit/Player/Spieler.prefab";
@@ -29,7 +38,57 @@ namespace Kit.Editor
             }
         }
 
-        [MenuItem("Tools/Kit/Spieler-Prefab bauen")]
+        /// <summary>
+        /// Tools › Kit › Spieler-Variante anlegen: the student's own Spieler (a variant of the shipped one) at
+        /// <see cref="VariantPath"/>. If it exists, it is selected instead; nothing is ever overwritten.
+        /// </summary>
+        [MenuItem(KitBrand.ToolsMenu + "Spieler-Variante anlegen", false, 20)]
+        static void VariantMenu()
+        {
+            var v = CreateVariant(out var message);
+            Debug.Log(KitBrand.Log + message);
+            if (v) { Selection.activeObject = v; EditorGUIUtility.PingObject(v); }
+        }
+
+        /// <summary>The variant at <see cref="VariantPath"/> (made if missing), or null if the shipped prefab is missing.</summary>
+        public static GameObject CreateVariant(out string message, string path = VariantPath)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing)
+            {
+                message = IsVariantOfShipped(existing) ? $"Die Spieler-Variante gibt es schon: {path}"
+                                                       : $"{path} gibt es schon, ist aber keine Variante des Kit-Spielers. Nichts geändert.";
+                return existing;
+            }
+            // Occupied by something Unity cannot load as a prefab (broken file, not yet imported): never write over it.
+            if (System.IO.File.Exists(path) || AssetDatabase.GetMainAssetTypeAtPath(path) != null)
+            {
+                message = $"{path} gibt es schon, lässt sich aber nicht als Prefab laden. Nichts geändert: die Datei prüfen oder umbenennen, dann noch einmal.";
+                return null;
+            }
+            var shipped = ShippedPath;
+            if (shipped == null) { message = "Der Kit-Spieler fehlt im Kurs-Paket (Player/Spieler.prefab)."; return null; }
+            KitPaths.EnsureFolder(System.IO.Path.GetDirectoryName(path).Replace('\\', '/'));
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(shipped));
+            try
+            {
+                var variant = PrefabUtility.SaveAsPrefabAsset(instance, path, out bool saved);   // saving an instance of a prefab makes a variant
+                message = saved && variant ? $"Spieler-Variante angelegt: {path}. In die Szene ziehen und dort oder im Prefab anpassen."
+                                           : $"Spieler-Variante konnte nicht gespeichert werden: {path}";
+                return saved ? variant : null;
+            }
+            finally { Object.DestroyImmediate(instance); }
+        }
+
+        /// <summary>True if the prefab is a variant whose base is the shipped Spieler.</summary>
+        public static bool IsVariantOfShipped(GameObject prefab)
+        {
+            if (!prefab || PrefabUtility.GetPrefabAssetType(prefab) != PrefabAssetType.Variant) return false;
+            var source = PrefabUtility.GetCorrespondingObjectFromSource(prefab);
+            return source && AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(source)) == Guid;
+        }
+
+        /// <summary>Rebuilds the shipped prefab from code. The menu for it lives in the studio project only (KitDev); students make a variant instead.</summary>
         public static GameObject Build()
         {
             var path = Path;
@@ -89,13 +148,18 @@ namespace Kit.Editor
 
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
             Object.DestroyImmediate(root);
-            Debug.Log("[Kit] Spieler-Prefab: " + path);
+            Debug.Log(KitBrand.Log + "Spieler-Prefab: " + path);
             return prefab;
         }
 
-        /// <summary>The shipped prefab; else one built earlier in the project; else a freshly built one.</summary>
+        /// <summary>
+        /// The Spieler the kit menus place (examples, Werkstatt): the student's variant if there is one (their tuning
+        /// carries over), else the shipped prefab; else one built earlier in the project; else a freshly built one.
+        /// </summary>
         public static GameObject Load()
         {
+            var variant = AssetDatabase.LoadAssetAtPath<GameObject>(VariantPath);
+            if (IsVariantOfShipped(variant)) return variant;
             var shipped = ShippedPath;
             if (shipped != null) return AssetDatabase.LoadAssetAtPath<GameObject>(shipped);
             return AssetDatabase.LoadAssetAtPath<GameObject>(Path) ?? Build();

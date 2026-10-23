@@ -6,15 +6,15 @@ using UnityEngine;
 namespace Kit.Editor
 {
     /// <summary>
-    /// Which Interaction the graph window shows and edits bindings for. Chosen explicitly (menu in the window,
-    /// "Graph öffnen" on an Interaction, or selecting an Interaction in the Hierarchy) and remembered per graph.
+    /// Which Logic the graph window shows and edits bindings for. Chosen explicitly (menu in the window,
+    /// "Graph öffnen" on a Logic, or selecting a Logic in the Hierarchy) and remembered per graph.
     /// It never changes on its own: if the chosen one is gone, the window says so.
     /// </summary>
     public static class KitInstances
     {
         static string Key(string graphPath) => "Kit.Instance." + graphPath;
 
-        public static void Select(string graphPath, Interaction it)
+        public static void Select(string graphPath, Logic it)
         {
             if (string.IsNullOrEmpty(graphPath)) return;
             SessionState.SetString(Key(graphPath), it ? GlobalObjectId.GetGlobalObjectIdSlow(it).ToString() : "");
@@ -25,12 +25,12 @@ namespace Kit.Editor
         public static event System.Action<string> Changed;
 
         /// <summary>The chosen instance, or null. Play mode reloads the scene, so fall back to the stable global id.</summary>
-        public static Interaction Get(string graphPath)
+        public static Logic Get(string graphPath)
         {
             int id = SessionState.GetInt(Key(graphPath) + ".id", 0);
-            if (id != 0 && EditorUtility.InstanceIDToObject(id) is Interaction byId && byId) return byId;
+            if (id != 0 && EditorUtility.InstanceIDToObject(id) is Logic byId && byId) return byId;
             var gid = SessionState.GetString(Key(graphPath), "");
-            if (!string.IsNullOrEmpty(gid) && GlobalObjectId.TryParse(gid, out var g) && GlobalObjectId.GlobalObjectIdentifierToObjectSlow(g) is Interaction it && it)
+            if (!string.IsNullOrEmpty(gid) && GlobalObjectId.TryParse(gid, out var g) && GlobalObjectId.GlobalObjectIdentifierToObjectSlow(g) is Logic it && it)
             {
                 SessionState.SetInt(Key(graphPath) + ".id", it.GetInstanceID());
                 return it;
@@ -43,42 +43,75 @@ namespace Kit.Editor
 
     public static class KitWindows
     {
-        public static string PathOf(KitGraph g) => g ? AssetDatabase.GetAssetPath(g) : null;
+        public static string PathOf(LogicGraph g) => g ? AssetDatabase.GetAssetPath(g) : null;
 
-        public static void OpenGraph(KitGraph g, Interaction instance, string revealSlot = null)
+        /// <summary>
+        /// Opens the graph for this Logik. <paramref name="revealSlot"/> lights up the nodes using that role;
+        /// <paramref name="frame"/> also scrolls the canvas to the first of them and selects it.
+        /// </summary>
+        public static void OpenGraph(LogicGraph g, Logic instance, string revealSlot = null, bool frame = false)
         {
             var path = PathOf(g);
             if (string.IsNullOrEmpty(path)) return;
             if (instance) KitInstances.Select(path, instance);
             AssetDatabase.OpenAsset(AssetDatabase.LoadMainAssetAtPath(path));
-            if (revealSlot != null) KitGtkBridge.RevealSlot(path, revealSlot);
+            if (revealSlot != null) KitGtkBridge.RevealSlot(path, revealSlot, frame);
         }
 
-        public static void CreateGraphFor(Interaction it)
+        /// <summary>
+        /// "Neu" on the Logik: a new Logik-Graph named after the object, in <see cref="KitPaths.LogicFolder"/>, with
+        /// "Dieses Objekt" already placed; assigned and opened. No file dialog: renaming happens in the Project window.
+        /// </summary>
+        public static void CreateGraphFor(Logic it)
         {
-            var path = EditorUtility.SaveFilePanelInProject("Neue Interaktion", it.name, KitEditorGraph.Extension, "Wo soll der Graph liegen?");
-            if (string.IsNullOrEmpty(path)) return;
-            CreateGraphAt(it, path);
-            OpenGraph(it.Graph, it);
+            var path = AssetDatabase.GenerateUniqueAssetPath($"{KitPaths.EnsureFolder(KitPaths.LogicFolder)}/{SafeName(it.name)}.{KitEditorGraph.Extension}");
+            var graph = CreateGraphAt(it, path);
+            EditorGUIUtility.PingObject(graph);
+            OpenGraph(graph, it);
         }
 
-        /// <summary>The "Neuer Graph …" button without the file dialog.</summary>
-        public static KitGraph CreateGraphAt(Interaction it, string path)
+        /// <summary>Creates the graph file at exactly this path (with "Dieses Objekt") and gives it to the Logik.</summary>
+        public static LogicGraph CreateGraphAt(Logic it, string path)
         {
-            KitGraphEditing.CreateAsset(path);
-            var graph = AssetDatabase.LoadAssetAtPath<KitGraph>(path);
+            SeedSelf(KitGraphEditing.CreateAsset(path));
+            var graph = AssetDatabase.LoadAssetAtPath<LogicGraph>(path);
             KitBinding.AssignGraph(it, graph);
             return graph;
         }
 
-        [MenuItem("GameObject/Kit/Interaktion", false, 10)]
-        static void CreateInteraction(MenuCommand cmd)
+        /// <summary>Puts a "Dieses Objekt" node into a brand-new graph (every way of making a graph does this).</summary>
+        public static void SeedSelf(KitEditorGraph g)
         {
-            var go = new GameObject("Neue Interaktion");
-            GameObjectUtility.SetParentAndAlign(go, cmd.context as GameObject);
-            Undo.RegisterCreatedObjectUndo(go, "Kit: Interaktion anlegen");
-            go.AddComponent<Interaction>();
-            Selection.activeGameObject = go;
+            if (g == null || !KitGraphEditing.Available || g.GetNodes().OfType<SelfNode>().Any()) return;
+            try { KitGraphEditing.AddNode<SelfNode>(g, new Vector2(-260, 0)); KitGraphEditing.Save(g); }
+            catch (System.Exception e) { Debug.LogWarning(KitBrand.Log + "„Dieses Objekt“ nicht angelegt (über + Knoten holen): " + e.Message); }
+        }
+
+        static string SafeName(string name)
+        {
+            foreach (var c in System.IO.Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+            return string.IsNullOrWhiteSpace(name) ? "Logik" : name.Trim();
+        }
+
+        /// <summary>
+        /// GameObject › Kit › Logik: puts a Logik on the selected object (or, with nothing selected, on a new empty
+        /// object). Unity calls this once per selected object.
+        /// </summary>
+        [MenuItem(KitBrand.GameObjectMenu + "Logik", false, 10)]
+        static void AddLogicMenu(MenuCommand cmd) => AddLogic(cmd.context as GameObject);
+
+        public static Logic AddLogic(GameObject target)
+        {
+            if (!target)
+            {
+                target = new GameObject("Logik");
+                Undo.RegisterCreatedObjectUndo(target, KitBrand.Name + ": Logik anlegen");
+                var view = SceneView.lastActiveSceneView;
+                if (view) target.transform.position = view.pivot;
+            }
+            var logic = Undo.AddComponent<Logic>(target);
+            Selection.activeGameObject = target;
+            return logic;
         }
     }
 
@@ -99,17 +132,12 @@ namespace Kit.Editor
         static void Rebuild()
         {
             s_Uses = new Dictionary<int, List<string>>();
-            foreach (var it in Object.FindObjectsByType<Interaction>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var it in Object.FindObjectsByType<Logic>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (!it.Graph) continue;
-                foreach (var b in it.Bindings)
+                foreach (var (go, slot) in KitRoles.Targets(it))   // incl. Dieses Objekt, without stale bindings
                 {
-                    var go = b.target as GameObject ?? (b.target as Component)?.gameObject;
-                    if (!go) continue;
-                    var slot = it.Graph.FindSlot(b.slot);
-                    if (slot == null) continue;
                     if (!s_Uses.TryGetValue(go.GetInstanceID(), out var list)) s_Uses[go.GetInstanceID()] = list = new List<string>();
-                    list.Add($"{it.name} › {slot.label}");
+                    list.Add($"{slot.label} in {it.Graph.name} (Logik auf „{it.name}“)");
                 }
             }
         }
@@ -120,13 +148,13 @@ namespace Kit.Editor
             if (!s_Uses.TryGetValue(id, out var uses)) return;
             var r = new Rect(rect.xMax - 26, rect.y, 26, rect.height);
             var c = GUI.color; GUI.color = KitStyle.Ref;
-            GUI.Label(r, new GUIContent("◆" + uses.Count, "Kit: " + string.Join("\n", uses)), EditorStyles.miniLabel);
+            GUI.Label(r, new GUIContent("◆" + uses.Count, KitBrand.Name + ": " + string.Join("\n", uses)), EditorStyles.miniLabel);
             GUI.color = c;
         }
     }
 
     /// <summary>
-    /// Before Play: save open graphs and check every Interaction. The list is written when Play has started:
+    /// Before Play: save open graphs and check every Logic. The list is written when Play has started:
     /// the Console's "Clear on Play" would wipe warnings logged while leaving edit mode (Weiche, Day 3).
     /// </summary>
     [InitializeOnLoad]
@@ -156,9 +184,9 @@ namespace Kit.Editor
         public static System.Collections.Generic.List<string> Check()
         {
             var lines = new System.Collections.Generic.List<string>();
-            foreach (var it in Object.FindObjectsByType<Interaction>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (var it in Object.FindObjectsByType<Logic>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
                 foreach (var p in it.Validate())
-                    lines.Add($"[Kit] Vor Play: {it.name} › {(p.node >= 0 && it.Graph ? it.Graph.nodes[p.node].title : "Interaktion")}: {p.text.Replace('\n', ' ')}");
+                    lines.Add($"{KitBrand.Log}Vor Play: {it.name} › {(p.node >= 0 && it.Graph ? it.Graph.nodes[p.node].title : "Logik")}: {p.text.Replace('\n', ' ')}");
             return lines;
         }
 
@@ -176,7 +204,7 @@ namespace Kit.Editor
                     AssetDatabase.ImportAsset(Unity.GraphToolkit.Editor.GraphDatabase.GetGraphAssetPath(graph), ImportAssetOptions.ForceSynchronousImport);
                     typeof(EditorWindow).GetProperty("hasUnsavedChanges")?.SetValue(w, false);   // protected setter
                 }
-                catch (System.Exception e) { Debug.LogWarning("[Kit] Graph vor Play nicht gespeichert: " + e.Message); }
+                catch (System.Exception e) { Debug.LogWarning(KitBrand.Log + "Graph vor Play nicht gespeichert: " + e.Message); }
             }
         }
     }

@@ -1,7 +1,7 @@
 {
     "name": "Kit.Extensions.Cinemachine",
     "rootNamespace": "Kit",
-    "references": ["Kit.Runtime", "Unity.Cinemachine"],
+    "references": ["Kit.Runtime", "Kit.Player", "Unity.Cinemachine", "Unity.Splines", "Unity.Mathematics"],
     "autoReferenced": true,
     "defineConstraints": ["KIT_CINEMACHINE"],
     "versionDefines": [

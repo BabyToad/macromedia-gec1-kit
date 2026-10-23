@@ -6,23 +6,30 @@ namespace Kit
 {
     // Kraft: stößt einen Rigidbody an. Die Physik rechnet es im nächsten Physik-Schritt aus.
     // Stoß und Tempo wirken einmal, wenn das Event ankommt. Dauerkraft schiebt in jedem Physik-Schritt weiter,
-    // bis "Stopp" kommt (oder die Interaktion aufhört).
+    // bis "Stopp" kommt (oder die Logik aufhört).
     [Serializable]
-    [NodeInfo("Kraft", "Aktion", "Rigidbody anstoßen oder dauerhaft schieben")]
+    [NodeInfo("Kraft", KitGroups.Aktion, "Rigidbody anstoßen oder dauerhaft schieben")]
     public class Push : KitNode
     {
         public enum Kind { Stoß, Dauerkraft, Tempo }
 
+        [Hint("Der Rigidbody, der angestoßen wird. Mit „Is Kinematic“ wirken keine Kräfte.")]
         [Ref("Körper")] public Rigidbody body;
+        [Hint("Wohin gestoßen wird, als X, Y, Z. Nur die Richtung zählt, nicht die Länge.", edges: "0, 0, 0: keine Wirkung.")]
         [Setting("Richtung")] public Vector3 direction = Vector3.up;
+        [Hint("Wie stark. Bei Stoß und Dauerkraft bewegen sich schwere Körper weniger, bei Tempo bekommt jeder Körper gleich viel Tempo dazu.", range: "Stoß 2 bis 20, Tempo 2 bis 15, Dauerkraft 10 bis 100", edges: "0: keine Wirkung. Negativ: in die Gegenrichtung.")]
         [Setting("Stärke")] public float strength = 5f;
+        [Hint("Stoß: ein Schlag, je schwerer der Körper, desto weniger Wirkung. Tempo: ein Schlag, der jedem Körper gleich viel Tempo gibt. Dauerkraft: schiebt ständig weiter, bis „Stopp“ kommt.")]
         [Setting("Art")] public Kind kind = Kind.Stoß;
+        [Hint("An: die Richtung dreht sich mit dem Körper (Z ist seine Vorderseite). Aus: Achsen der Welt (Y ist oben).")]
         [Setting("Richtung lokal")] public bool local = true;   // lokal: "nach vorn" ist die Blickrichtung des Körpers
 
+        [Hint("Feuert, sobald die Kraft wirkt; bei Dauerkraft gleich zu Beginn, nicht am Ende.")]
         [Output("Angewendet")] [NonSerialized] public Output applied;
 
         Coroutine pushing;
 
+        [Hint("Stößt den Körper an. Bei Dauerkraft ersetzt ein neues Ereignis das laufende Schieben.")]
         [Input("Anstoßen")]
         public void Apply(Signal s)
         {
@@ -40,6 +47,7 @@ namespace Kit
             applied.Fire(s);
         }
 
+        [Hint("Beendet die Dauerkraft. Darf auch von einem ganz anderen Ereignis kommen.")]
         [Input("Stopp", UsesRefs = false)]   // braucht den Körper nicht: auch ein anderes Ereignis darf stoppen
         public void Stop(Signal s)
         {

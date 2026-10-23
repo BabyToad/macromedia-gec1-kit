@@ -37,7 +37,7 @@ namespace Kit.Editor
             }
         }
 
-        [MenuItem("Tools/Kit/Beispiel „Werkstatt (kaputt)“ bauen")]
+        [MenuItem(KitBrand.ToolsMenu + "Beispiel „Werkstatt (kaputt)“ bauen")]
         static void Menu()
         {
             if (!KitPaths.OpenScenesSafe()) return;
@@ -48,15 +48,27 @@ namespace Kit.Editor
                         $"Die Werkstatt gibt es schon:\n{target}\n\nEine neue Kopie daneben anlegen?", "Neue Kopie anlegen", "Abbrechen"))
                     return;
             }
+            BuildAndOpen(target);
+        }
+
+        /// <summary>
+        /// What the menu does: copy, open the copy (as before), give its bound objects their Rolle (the template scene
+        /// may predate the Rolle) and save. Returns the scene path, or null.
+        /// </summary>
+        public static string BuildAndOpen(string target)
+        {
             var scene = Build(target);
-            if (scene != null) UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scene);
+            if (scene == null) return null;
+            var opened = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scene);
+            if (KitRoles.Reconcile(opened).added > 0) UnityEditor.SceneManagement.EditorSceneManager.SaveScene(opened);
+            return scene;
         }
 
         /// <summary>Copies the Werkstatt to <paramref name="target"/> (a free folder name if it exists). Returns the scene path.</summary>
         public static string Build(string target)
         {
             var src = Source;
-            if (src == null) { Debug.LogError("[Kit] Werkstatt: die Vorlage fehlt im Kurs-Paket (Samples~/Werkstatt)"); return null; }
+            if (src == null) { Debug.LogError(KitBrand.Log + "Werkstatt: die Vorlage fehlt im Kurs-Paket (Samples~/Werkstatt)"); return null; }
             if (!KitPaths.IsWritable(target)) throw new ArgumentException($"„{target}“ liegt nicht unter Assets");
             KitPaths.EnsureFolder(Path.GetDirectoryName(target).Replace('\\', '/'));
             if (AssetDatabase.IsValidFolder(target) || Directory.Exists(target)) target = AssetDatabase.GenerateUniqueAssetPath(target);
@@ -88,7 +100,7 @@ namespace Kit.Editor
             }
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             var scene = target + "/Werkstatt.unity";
-            Debug.Log($"[Kit] Werkstatt (kaputt) angelegt: {scene}");
+            Debug.Log($"{KitBrand.Log}Werkstatt (kaputt) angelegt: {scene}");
             return File.Exists(scene) ? scene : null;
         }
 

@@ -27,7 +27,7 @@ namespace Kit
         public override void OnStop() { if (owner != null) owner.Changed -= OnChanged; }
 
         // Eine Änderung (von hier oder von einer anderen Interaktion) beginnt hier ein neues Ereignis.
-        void OnChanged(string name, bool value, Interaction writer)
+        void OnChanged(string name, bool value, Logic writer)
         {
             if (name != label) return;
             Done($"{label}: {JaNein(value)}{(writer != Runner && writer != null ? $" (von „{writer.name}“)" : "")}");

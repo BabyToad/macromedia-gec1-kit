@@ -20,7 +20,7 @@ namespace Kit.Editor
     ///
     /// GTK 0.4 has no public API for any of this, so it reads internal view types by reflection
     /// (pinned to 6.3 for the semester). If those types are missing, the window shows a notice and the
-    /// Interaction inspector carries the same information.
+    /// Logic inspector carries the same information.
     /// </summary>
     [InitializeOnLoad]
     public static partial class KitGtkBridge
@@ -47,7 +47,7 @@ namespace Kit.Editor
         public const string GtkBrokenMessage =
             "Diese Unity-Version passt nicht zum Graph-Werkzeug: Knoten mit Einstellungen werden nicht gezeichnet. " +
             "Für den Kurs Unity 6000.3.15f1 verwenden (Unity Hub › Installs). Spielen funktioniert trotzdem; " +
-            "Objekte lassen sich im Inspector der Interaktion binden.";
+            "Rollen lassen sich im Inspector der Logik binden.";
 
         static readonly Dictionary<EditorWindow, WindowView> s_Windows = new Dictionary<EditorWindow, WindowView>();
         static double s_Next;
@@ -107,13 +107,18 @@ namespace Kit.Editor
         /// <summary>The kit overlay of an open graph window (null if none yet).</summary>
         internal static WindowView ViewFor(EditorWindow w) => w != null && s_Windows.TryGetValue(w, out var v) ? v : null;
 
-        /// <summary>Called from the Interaction inspector's search button.</summary>
-        public static void RevealSlot(string graphPath, string slot)
+        /// <summary>Lights up the nodes using a role (Logik/Rolle Inspector); with <paramref name="frame"/> also scrolls to the first one.</summary>
+        public static void RevealSlot(string graphPath, string slot, bool frame = false)
         {
-            EditorApplication.delayCall += () =>
+            double until = EditorApplication.timeSinceStartup + 3;
+            void Try()
             {
-                foreach (var v in s_Windows.Values.Where(v => v.Path == graphPath)) v.FlashSlot(slot);
-            };
+                // The window may only just be opening: wait until its overlay exists (it is built a few times a second).
+                var views = s_Windows.Values.Where(v => v.Path == graphPath).ToList();
+                if (views.Count == 0 && EditorApplication.timeSinceStartup < until) { EditorApplication.delayCall += Try; return; }
+                foreach (var v in views) { v.FlashSlot(slot); if (frame) v.FrameSlot(slot); }
+            }
+            EditorApplication.delayCall += Try;
         }
     }
 }

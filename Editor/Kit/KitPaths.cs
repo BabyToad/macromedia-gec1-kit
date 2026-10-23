@@ -18,6 +18,9 @@ namespace Kit.Editor
         /// <summary>Folder for everything the kit menus build in a student project.</summary>
         public const string StudentFolder = "Assets/Kit Beispiel";
 
+        /// <summary>Where "Neu" on a Logik puts new Logik-Graphs.</summary>
+        public const string LogicFolder = "Assets/Logik";
+
         /// <summary>The package this kit was installed as, or null when it sits in Assets (studio project).</summary>
         public static PackageInfo Package => PackageInfo.FindForAssembly(typeof(KitPaths).Assembly);
 
@@ -66,7 +69,7 @@ namespace Kit.Editor
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
                 if (UnityEngine.SceneManagement.SceneManager.GetSceneAt(i).isDirty)
                 {
-                    Debug.LogWarning("[Kit] Eine geöffnete Szene hat ungespeicherte Änderungen: nichts gebaut.");
+                    Debug.LogWarning(KitBrand.Log + "Eine geöffnete Szene hat ungespeicherte Änderungen: nichts gebaut.");
                     return false;
                 }
             return true;

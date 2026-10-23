@@ -7,19 +7,26 @@ namespace Kit
     // Animator Controller entscheiden dann, welche Animation läuft.
     // "Gesetzt" heißt: der Parameter ist gesetzt – nicht, dass die Animation schon fertig ist.
     [Serializable]
-    [NodeInfo("Animator-Wert", "Erweiterung", "Parameter im Animator setzen")]
+    [NodeInfo("Animator-Wert", KitGroups.Erweiterung, "Parameter im Animator setzen")]
     public class AnimatorValue : KitNode
     {
         public enum Kind { Trigger, JaNein, Zahl, Ganzzahl }   // Reihenfolge nicht ändern: gespeicherte Graphen nutzen die Nummer
 
+        [Hint("Der Animator, dessen Parameter gesetzt wird. Braucht einen Animator Controller.")]
         [Ref("Animator")] public Animator animator;
+        [Hint("Name des Parameters, genau wie im Animator Controller geschrieben. Groß- und Kleinschreibung zählt.")]
         [Setting("Parameter")] public string parameter = "Open";
+        [Hint("Welche Art der Parameter im Animator hat; muss dazu passen. Trigger: löst einmal aus. Ja/Nein: setzt den Haken. Zahl: nimmt die ● Zahl. Ganzzahl: nimmt die ● Zahl gerundet.")]
         [Setting("Art")] public Kind kind = Kind.Trigger;
+        [Hint("Der Wert für die Art „Ja/Nein“. Bei anderen Arten egal.")]
         [Setting("Ja/Nein")] public bool boolValue = true;
+        [Hint("Der Wert für die Arten „Zahl“ und „Ganzzahl“ (dort gerundet). Bei anderen Arten egal.")]
         [DataIn("Zahl")] public float number;
 
+        [Hint("Feuert, sobald der Parameter gesetzt ist, nicht erst, wenn die Animation fertig ist.")]
         [Output("Gesetzt")] [NonSerialized] public Output set;
 
+        [Hint("Setzt den Parameter. Was dann abläuft, entscheiden die Übergänge im Animator Controller.")]
         [Input("Setzen")]
         public void Set(Signal s)
         {

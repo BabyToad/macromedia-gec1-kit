@@ -4,40 +4,50 @@ using UnityEngine;
 
 namespace Kit
 {
-    // Kamera wechseln: hebt eine Cinemachine-Kamera über alle anderen (Aktivieren) oder senkt sie wieder
-    // (Deaktivieren). Der CinemachineBrain an der Hauptkamera blendet dann zur Kamera mit der höchsten Priorität.
+    // Kamera wechseln: lässt eine andere Cinemachine-Kamera das Spiel zeigen (Aktivieren), mit einer Kamerafahrt
+    // dorthin, und gibt das Bild wieder ab (Deaktivieren): dann zeigt wieder die Kamera davor, am Ende die
+    // Spieler-Sicht. Für Zwischensequenzen, einen Blick auf die Tür, die gerade aufging, eine Übersicht.
     [Serializable]
-    [NodeInfo("Kamera wechseln", "Erweiterung", "Cinemachine-Kamera aktivieren")]
+    [NodeInfo("Kamera wechseln", KitGroups.Kamera, "Andere Kamera zeigen lassen, mit Kamerafahrt")]
     public class CameraSwitch : KitNode
     {
-        [Ref("Kamera")] public CinemachineCamera cam;
-        [Setting("Priorität aktiv")] public int activePriority = 100;
+        [Ref("Kamera")]
+        [Hint("Die Kamera, die übernehmen soll: ein Objekt mit CinemachineCamera, z. B. mit „Kamera: Fest“.")]
+        public CinemachineCamera cam;
 
-        [Output("Gewechselt")] [NonSerialized] public Output switched;
+        [Setting("Übergang")]
+        [Hint("So lange dauert die Kamerafahrt (echte Zeit).", unit: "s", range: "0,5 bis 3", edges: "0: harter Schnitt. 1: ruhige Fahrt. 3: langsamer Schwenk.")]
+        public float seconds = 1f;
 
-        // Priorität vor dem Aktivieren, pro Kamera (die Kamera kann auch mit dem Ereignis kommen).
-        System.Collections.Generic.Dictionary<CinemachineCamera, int> normal;
+        [Setting("Verlauf")]
+        [Hint("Wie die Kamerafahrt verläuft.", edges: "„Weich“ wirkt wie eine Kranfahrt.")]
+        public Ease ease = Ease.Smooth;
 
-        public override void OnStart() => normal = new System.Collections.Generic.Dictionary<CinemachineCamera, int>();
+        [Hint("Kommt sofort beim Wechsel; die Kamerafahrt läuft dann noch.")] [Output("Gewechselt")] [NonSerialized] public Output switched;
 
-        [Input("Aktivieren")]
+        [Hint("Diese Kamera zeigt ab jetzt das Spiel, mit einer Kamerafahrt dorthin.")] [Input("Aktivieren")]
         public void On(Signal s)
         {
-            if (!normal.ContainsKey(cam)) normal[cam] = cam.Priority;
-            cam.Priority = activePriority; Done("✓ aktiv"); switched.Fire(s);
+            CameraDirector.Switch(cam, this, seconds, ease);
+            Done("✓ zeigt: " + cam.name); switched.Fire(s);
         }
 
-        [Input("Deaktivieren")]
+        [Hint("Gibt das Bild an die Kamera davor zurück (am Ende an die Spieler-Sicht).")] [Input("Deaktivieren")]
         public void Off(Signal s)
         {
-            if (!normal.TryGetValue(cam, out var p)) { Done($"„{cam.name}“ war nicht aktiviert"); return; }
-            cam.Priority = p; normal.Remove(cam); Done("✓ zurück"); switched.Fire(s);
+            if (!CameraDirector.IsSwitchedTo(cam)) { Done($"„{cam.name}“ war nicht aktiviert"); return; }
+            CameraDirector.Release(this, seconds, ease, cam);
+            Done("✓ zurück"); switched.Fire(s);
         }
+
+        public override void OnStart() => PlayerCameraBridge.Ensure();   // bereit, bevor gewechselt wird: Kamerafahrt statt Schnitt
+
+        public override void OnStop() => CameraDirector.Release(this, 0.5f, Ease.Smooth);   // Interaktion aus: Bild zurückgeben
 
         public override void Validate(System.Collections.Generic.List<string> problems)
         {
-            if (Camera.main != null && Camera.main.GetComponent<CinemachineBrain>() == null)
-                problems.Add("Die Hauptkamera hat keinen CinemachineBrain: der Wechsel wäre unsichtbar");
+            if (Camera.main == null) problems.Add("Die Szene hat keine Hauptkamera (Tag MainCamera)");
+            if (seconds < 0f) problems.Add("Übergang darf nicht negativ sein");
         }
     }
 }

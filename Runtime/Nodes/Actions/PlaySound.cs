@@ -7,19 +7,25 @@ namespace Kit
     // Ton abspielen: spielt einen Clip auf einer AudioSource. Lautstärke, 3D usw. werden an der
     // AudioSource eingestellt – der Knoten ändert dort nichts.
     // "Ton fertig" heißt: die Quelle spielt nicht mehr. Das ist am Ende des Clips so, aber auch nach
-    // Stopp, Pause oder wenn ein neuer Ton den alten abschneidet. Bei "Loop" kommt es nie.
+    // Stopp oder Pause an der Quelle. Schneidet ein neuer Ton den alten ab, kommt für den alten kein
+    // "Ton fertig", nur für den neuen. Bei "Loop" kommt es nie.
     [Serializable]
-    [NodeInfo("Ton abspielen", "Aktion", "Clip auf einer AudioSource abspielen")]
+    [NodeInfo("Ton abspielen", KitGroups.Aktion, "Clip auf einer AudioSource abspielen")]
     public class PlaySound : KitNode
     {
+        [Hint("Die AudioSource, die spielt. Lautstärke, 3D-Klang und Loop werden dort eingestellt.")]
         [Ref("Quelle")] public AudioSource source;
-        [Setting("Clip (leer = Clip der Quelle)")] public AudioClip clip;
+        [Hint("Welcher Ton gespielt wird. Ersetzt den Clip an der Quelle dauerhaft.", edges: "Leer: der Clip, der schon an der Quelle liegt.")]
+        [Setting("Clip")] public AudioClip clip;
 
+        [Hint("Feuert, sobald der Ton beginnt.")]
         [Output("Ton gestartet")] [NonSerialized] public Output started;
+        [Hint("Feuert, sobald die Quelle nicht mehr spielt: am Ende des Clips, aber auch nach Stopp oder Pause an der Quelle. Spielt dieser Knoten neu, kommt es für den alten Ton nicht. Ein Loop endet nicht von selbst.")]
         [Output("Ton fertig")] [NonSerialized] public Output finished;
 
         Coroutine work;
 
+        [Hint("Spielt den Clip von vorn. Läuft er noch, wird er abgeschnitten.")]
         [Input("Abspielen")]
         public void Play(Signal s)
         {

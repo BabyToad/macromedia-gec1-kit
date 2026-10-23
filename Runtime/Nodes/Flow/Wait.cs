@@ -9,22 +9,32 @@ namespace Kit
     //   Neu starten (Standard): das alte wird verworfen ("Abgebrochen" feuert), die Zeit beginnt von vorn.
     //   Ignorieren: das neue wird blockiert, das alte läuft weiter.
     [Serializable]
-    [NodeInfo("Warten", "Ablauf", "Gibt das Ereignis nach einer Zeit weiter")]
+    [Hint("Pro Knoten wartet immer nur ein Ereignis. Kommt ein neues, während eins wartet, entscheidet „Wenn schon wartet“: von vorn beginnen oder das neue ignorieren.")]
+    [NodeInfo("Warten", KitGroups.Ablauf, "Gibt das Ereignis nach einer Zeit weiter")]
     public class Wait : KitNode
     {
         public enum WhenBusy { NeuStarten, Ignorieren }
 
-        [Setting("Dauer (s)")] public float seconds = 1f;
+        [Hint("Wie lange gewartet wird, bevor „Fertig“ feuert.", unit: "s", range: "0,1 bis 10", edges: "0: sofort weiter. Negativ: zählt als 0.")]
+        [Setting("Dauer")] public float seconds = 1f;
+        [Hint("Was passiert, wenn ein Ereignis ankommt, während noch eins wartet. Neu starten: das alte wird verworfen („Abgebrochen“ feuert), die Zeit beginnt von vorn. Ignorieren: das neue endet hier, das alte wartet weiter.")]
         [Setting("Wenn schon wartet")] public WhenBusy whenBusy = WhenBusy.NeuStarten;
-        [Setting("Echtzeit (ignoriert Pause)")] public bool realtime = false;
+        [Hint("An: wartet in echter Zeit, auch während das Spiel angehalten ist (Pause, Anhalten). Aus: steht die Spielzeit still, wartet auch der Knoten.")]
+        [Setting("Echtzeit")] public bool realtime = false;
 
+        [Hint("Feuert nach der Dauer, mit dem Ereignis, das gewartet hat (z.B. mit seinem ◆ Wer).")]
         [Output("Fertig")] [NonSerialized] public Output done;
+        [Hint("Feuert, wenn ein Warten vorzeitig endet: durch „Abbrechen“ oder weil ein neues Ereignis es neu startet. Mit dem alten Ereignis.")]
         [Output("Abgebrochen")] [NonSerialized] public Output cancelled;
-        [DataOut("Restzeit (s)")] [NonSerialized] public float remaining;
+        [Hint("Wie lange das laufende Warten noch dauert.", unit: "s", edges: "0: wartet gerade nicht.")]
+        [DataOut("Restzeit")] [NonSerialized] public float remaining;
+        [Hint("Ja, solange ein Ereignis wartet.")]
+        [DataOut("Wartet")] public bool Waiting => work != null;
 
         Coroutine work;
         Signal waiting;   // das Ereignis, das gerade wartet
 
+        [Hint("Beginnt das Warten mit diesem Ereignis.")]
         [Input("Start")]
         public void Begin(Signal signal)
         {
@@ -39,6 +49,7 @@ namespace Kit
             work = StartWork(Run(signal));
         }
 
+        [Hint("Beendet das laufende Warten: „Fertig“ kommt nicht, dafür „Abgebrochen“. Wartet nichts, passiert nichts.")]
         [Input("Abbrechen")]
         public void Cancel(Signal signal)
         {

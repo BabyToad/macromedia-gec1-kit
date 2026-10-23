@@ -6,7 +6,7 @@ namespace Kit
     // Lebenspunkte eines Objekts (Spieler, Gegner, Kiste). Die Komponente hält den Wert; Knoten
     // („Lebenspunkte“) ändern ihn. So können mehrere Interaktionen (Lava, Heiltrank, Gegner)
     // dieselben Lebenspunkte benutzen. Jedes Play beginnt mit dem Startwert.
-    [AddComponentMenu("Kit/Lebenspunkte")]
+    [AddComponentMenu("")]   // v0.3.2; „Projekt auf den neuen Stand bringen“ macht daraus Variable-Komponenten
     public class KitHealth : MonoBehaviour
     {
         [Min(1)] public float max = 100f;

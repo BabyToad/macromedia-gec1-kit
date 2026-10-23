@@ -10,7 +10,7 @@ namespace Kit
     //  - Start: jeder Merker beginnt bei jedem Play mit seinem Startwert (kein Speichern zwischen Plays).
     //  - Schreiben: "alle" oder nur die eingetragenen Interaktionen. Andere werden blockiert (mit Grund).
     //  - Verschwindet der Besitzer, melden alle Knoten, die ihn benutzen, einen Fehler.
-    [AddComponentMenu("Kit/Gemeinsamer Zustand")]
+    [AddComponentMenu("")]   // v0.3.2; „Projekt auf den neuen Stand bringen“ macht daraus Variable-Komponenten
     public class KitSharedState : MonoBehaviour
     {
         [Serializable]
@@ -19,21 +19,21 @@ namespace Kit
             public string name = "Strom an";
             public bool startValue;
             [Tooltip("Leer = alle Interaktionen dürfen schreiben")]
-            public List<Interaction> writers = new List<Interaction>();
+            public List<Logic> writers = new List<Logic>();
             [NonSerialized] public bool value;
         }
 
         public List<Entry> entries = new List<Entry> { new Entry() };
 
         /// <summary>(Name, neuer Wert, wer geschrieben hat) nach jeder echten Änderung.</summary>
-        public event Action<string, bool, Interaction> Changed;
+        public event Action<string, bool, Logic> Changed;
 
         void Awake() { foreach (var e in entries) e.value = e.startValue; }
 
         public Entry Find(string name) => entries.Find(e => e.name == name);
 
         /// <summary>Schreibt, wenn erlaubt. Gibt null zurück oder den Grund, warum nicht.</summary>
-        public string TrySet(string name, bool value, Interaction writer, out bool changed)
+        public string TrySet(string name, bool value, Logic writer, out bool changed)
         {
             changed = false;
             var e = Find(name);

@@ -10,30 +10,38 @@ namespace Kit
     // Ablauf pro Frame: Eingabe lesen → Blickrichtung drehen → Tempo berechnen → Schwerkraft/Sprung →
     // CharacterController.Move(). Alles wird mit Time.deltaTime multipliziert, damit es bei 30 und
     // 144 Bildern pro Sekunde gleich schnell ist.
-    [AddComponentMenu("Kit/Spieler")]
+    [AddComponentMenu(KitBrand.ComponentMenu + "Spieler")]
     [RequireComponent(typeof(CharacterController))]
     public class KitPlayer : MonoBehaviour
     {
         public enum View { ErstePerson, DrittePerson }
 
         [Header("Ansicht")]
+        [Hint("Ich-Perspektive oder Ansicht von hinten. Im Spiel umschalten mit V (Select am Gamepad).", label: "Ansicht")]
         public View view = View.ErstePerson;
-        [Tooltip("Dreh- und Neigepunkt der Kamera (Augenhöhe)")] public Transform head;
+        [Hint("Dreh- und Neigepunkt der Kamera auf Augenhöhe. Richtet das Prefab ein.", label: "Kopf")] public Transform head;
 
-        [Header("Bewegung (Meter, Sekunden)")]
+        [Header("Bewegung")]
+        [Hint("Wie schnell der Spieler geht.", unit: "m/s", range: "2 bis 6", edges: "0: steht still.", label: "Gehtempo")]
         public float walkSpeed = 4f;
+        [Hint("Wie schnell der Spieler mit gedrückter Umschalttaste (linker Trigger am Gamepad) rennt.", unit: "m/s", range: "5 bis 10", edges: "Kleiner als das Gehtempo: Rennen bremst.", label: "Renntempo")]
         public float runSpeed = 7f;
+        [Hint("Wie hoch ein Sprung trägt, unabhängig von der Schwerkraft.", unit: "m", range: "0,5 bis 3", edges: "0: kein Sprung.", label: "Sprunghöhe")]
         public float jumpHeight = 1.2f;
+        [Hint("Wie stark der Spieler nach unten gezogen wird; negativ heißt nach unten. Stärker: kürzere, härtere Sprünge.", unit: "m/s²", range: "-30 bis -10 (Erde: -9,81)", edges: "0: schwebt nach einem Sprung davon. Positiv: fällt nach oben.", label: "Schwerkraft")]
         public float gravity = -20f;
-        [Tooltip("Wie schnell das Tempo erreicht wird. Klein = rutschig, groß = direkt")] public float acceleration = 40f;
+        [Hint("Wie schnell das gewünschte Tempo erreicht wird, auch beim Abbremsen. In der Luft wirken nur 30 % davon.", unit: "m/s²", range: "10 bis 80", edges: "Klein: rutschig wie auf Eis. Groß: sofort volles Tempo.", label: "Beschleunigung")] public float acceleration = 40f;
 
         [Header("Umschauen")]
+        [Hint("Wie weit sich der Blick pro Pixel Mausbewegung dreht.", unit: "° pro Pixel", range: "0,05 bis 0,3", label: "Mausempfindlichkeit")]
         public float mouseSensitivity = 0.12f;      // Grad pro Pixel Mausbewegung
+        [Hint("Wie schnell sich der Blick bei voll ausgelenktem rechtem Stick dreht.", unit: "°/s", range: "90 bis 360", label: "Stick-Empfindlichkeit")]
         public float stickSensitivity = 180f;        // Grad pro Sekunde bei voll ausgelenktem Stick
+        [Hint("An: Maus oder Stick nach vorn schaut nach unten, wie in Flugspielen.", label: "Y umkehren")]
         public bool invertY = false;
 
         [Header("Zurücksetzen")]
-        [Tooltip("Fällt der Spieler tiefer, wird er zurückgesetzt")] public float fallLimit = -20f;
+        [Hint("Fällt der Spieler unter diese Höhe, wird er zum Neustart-Punkt zurückgesetzt.", unit: "m", edges: "Muss unter dem tiefsten Boden der Szene liegen, sonst wird der Spieler ständig zurückgesetzt.", label: "Falltiefe")] public float fallLimit = -20f;
 
         /// <summary>Wird nach jedem Zurücksetzen aufgerufen (Checkpoint, Herunterfallen).</summary>
         public event Action Respawned;
@@ -172,7 +180,7 @@ namespace Kit
             bool wantsJump = Time.time - jumpPressedTime <= JumpBuffer;
             if (canJump && wantsJump)
             {
-                vertical = Mathf.Sqrt(2f * jumpHeight * -gravity);   // Tempo, das genau jumpHeight hoch trägt
+                vertical = Mathf.Sqrt(2f * jumpHeight * Mathf.Max(0.01f, -gravity));   // Tempo, das genau jumpHeight hoch trägt (Schwerkraft ≥ 0: nie NaN)
                 jumpPressedTime = lastGroundedTime = -1f;
             }
             else if (IsGrounded && vertical < 0) vertical = -2f;     // leicht an den Boden drücken (Schrägen hinunter)
@@ -205,7 +213,7 @@ namespace Kit
         // Schritten (FixedUpdate). Damit das Schieben bei 30 und bei 200 Bildern pro Sekunde gleich stark ist,
         // merken wir uns nur, WEN wir gerade berühren, und schieben im Physik-Schritt mit fester Kraft.
         [Header("Schieben")]
-        [Tooltip("Kraft in Newton, mit der der Spieler Rigidbodies schiebt (schwere bewegen sich weniger)")]
+        [Hint("Wie fest der Spieler Rigidbodies wegschiebt, gegen die er läuft. Schwere bewegen sich weniger.", unit: "N", range: "20 bis 200", edges: "0: schiebt nichts.", label: "Schiebekraft")]
         public float pushForce = 60f;
 
         readonly System.Collections.Generic.Dictionary<Rigidbody, (Vector3 dir, float time)> touching =

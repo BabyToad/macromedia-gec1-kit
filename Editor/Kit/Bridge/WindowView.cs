@@ -22,8 +22,8 @@ namespace Kit.Editor
             public string Path;
 
             KitEditorGraph m_Graph;
-            KitGraph m_Runtime;
-            Interaction m_Instance;
+            LogicGraph m_Runtime;
+            Logic m_Instance;
             readonly VisualElement m_Bar;
             readonly Button m_InstanceButton;
             readonly Label m_Summary, m_Info;
@@ -42,7 +42,8 @@ namespace Kit.Editor
             {
                 public VisualElement Extras, Chips, Glow, Progress;
                 public Label State;
-                public string ChipSignature;
+                public string ChipSignature, Title;
+                public bool TooltipsSet;
                 public readonly List<(ObjectField field, string slot)> Fields = new List<(ObjectField, string)>();
             }
 
@@ -52,7 +53,7 @@ namespace Kit.Editor
                 if (Style) Root.styleSheets.Add(Style);
                 m_Bar = new VisualElement(); m_Bar.AddToClassList("kit-bar");
                 var row = new VisualElement(); row.AddToClassList("kit-bar__row");
-                m_InstanceButton = new Button(PickInstance) { tooltip = "Welche Interaktion in der Szene zeigt und bearbeitet dieses Fenster?" };
+                m_InstanceButton = new Button(PickInstance) { tooltip = "Welche Logik in der Szene dieses Fenster zeigt: ihre Rollen werden hier gebunden, ihr Zustand im Play angezeigt." };
                 m_Summary = new Label(); m_Summary.AddToClassList("kit-bar__summary");
                 var add = new Button(ShowPalette) { text = "+ Knoten", tooltip = "Knoten hinzufügen (deutsche Liste). Leertaste öffnet die GTK-Liste mit englischen Namen." };
                 row.Add(m_InstanceButton); row.Add(add); row.Add(m_Summary);
@@ -71,7 +72,7 @@ namespace Kit.Editor
                 // Variables (Blackboard) are not part of the kit; its panel would only cover the canvas.
                 if (w.TryGetOverlay("gtf-blackboard", out var blackboard)) blackboard.displayed = false;
                 if (GtkFieldsBroken) ShowNotice(GtkBrokenMessage);
-                else if (!ReflectionOk) ShowNotice("Beobachtung im Graph nicht verfügbar (GTK-Interna fehlen). Zustand und Objekte: Inspector der Interaktion.");
+                else if (!ReflectionOk) ShowNotice("Beobachtung im Graph nicht verfügbar (GTK-Interna fehlen). Zustand und Rollen: Inspector der Logik.");
             }
 
             public void ShowNotice(string text)
@@ -80,7 +81,7 @@ namespace Kit.Editor
                 m_Notice.text = text;
             }
 
-            Interaction Instance => KitInstances.Get(Path);
+            Logic Instance => KitInstances.Get(Path);
 
             public void InstanceChanged() { foreach (var d in m_Decos.Values) d.ChipSignature = null; }
 
@@ -89,16 +90,16 @@ namespace Kit.Editor
             {
                 m_Graph = graph;
                 Path = GraphDatabase.GetGraphAssetPath(graph);
-                m_Runtime = AssetDatabase.LoadAssetAtPath<KitGraph>(Path);
+                m_Runtime = AssetDatabase.LoadAssetAtPath<LogicGraph>(Path);
                 if (m_Bar.parent != Root) Root.Add(m_Bar);
                 m_Bar.BringToFront();
 
-                var instances = m_Runtime ? KitBinding.InstancesOf(m_Runtime) : Array.Empty<Interaction>();
+                var instances = m_Runtime ? KitBinding.InstancesOf(m_Runtime) : Array.Empty<Logic>();
                 if (!KitInstances.HasChoice(Path) && instances.Length == 1) KitInstances.Select(Path, instances[0]);
                 var inst = Instance;
                 if (inst != m_Instance) { m_Instance = inst; InstanceChanged(); }
                 m_InstanceButton.text = inst ? $"Instanz: {inst.name} ▾" + (instances.Length == 1 ? " (einzige)" : $" · {instances.Length} in der Szene")
-                    : instances.Length == 0 ? "Keine Interaktion nutzt diesen Graph ▾" : $"Instanz wählen ▾ · {instances.Length} in der Szene";
+                    : instances.Length == 0 ? "Keine Logik nutzt diesen Graph ▾" : $"Logik wählen ▾ · {instances.Length} in der Szene";
 
                 m_Problems.Clear();
                 if (inst && !Application.isPlaying)
@@ -120,7 +121,7 @@ namespace Kit.Editor
                 {
                     var model = ModelOf(ve);
                     if (model == null) return;
-                    if (Get(model, "Node") is Node node && (node is KitEditorNode || node is ObjectNode))
+                    if (Get(model, "Node") is Node node && IsKitNode(node))
                     {
                         DecorateNode(ve, node, inst);
                         if (IsSelected(ve)) { selected = node; selectedView = ve; }
@@ -137,7 +138,7 @@ namespace Kit.Editor
                 if (Application.isPlaying) Window.Repaint();   // an unfocused window does not redraw by itself
             }
 
-            void Summarize(Interaction inst)
+            void Summarize(Logic inst)
             {
                 if (!inst) { m_Summary.text = m_Runtime ? "Instanz wählen (Knopf links), dann Objekte binden und Play beobachten." : "Graph noch nicht importiert (speichern)."; return; }
                 if (!Application.isPlaying)
@@ -156,23 +157,30 @@ namespace Kit.Editor
             // ---------------------------------------------------------------------------- nodes
             int RuntimeIndex(Node n) => m_Runtime ? m_Runtime.IndexOf(KitIds.Of(n)) : -1;
 
-            /// <summary>The slot a ◆ input reads: the Objekt node it is wired to, or its own chip.</summary>
+            static bool IsKitNode(Node n) => n is KitEditorNode || n is ObjectNode || n is SelfNode;
+
+            /// <summary>The role a ◆ input reads: the Rolle node or Dieses Objekt it is wired to, or its own chip.</summary>
             static string SlotOf(Node n, string refId)
             {
                 var port = n.GetInputPortByName(refId);
                 var list = new List<IPort>();
                 port?.GetConnectedPorts(list);
-                foreach (var p in list) if (p.GetNode() is ObjectNode on) return KitIds.Of(on);
-                return KitGraph.InlineSlotId(KitIds.Of(n), refId);
+                foreach (var p in list)
+                {
+                    if (p.GetNode() is ObjectNode on) return KitIds.Of(on);
+                    if (p.GetNode() is SelfNode) return LogicGraph.SelfSlot;
+                }
+                return LogicGraph.InlineSlotId(KitIds.Of(n), refId);
             }
 
             IEnumerable<string> SlotsOf(Node n)
             {
                 if (n is ObjectNode) { yield return KitIds.Of(n); yield break; }
+                if (n is SelfNode) { yield return LogicGraph.SelfSlot; yield break; }
                 if (n is KitEditorNode k) foreach (var r in k.Schema.Refs) yield return SlotOf(n, r.Id);
             }
 
-            void DecorateNode(VisualElement view, Node node, Interaction inst)
+            void DecorateNode(VisualElement view, Node node, Logic inst)
             {
                 if (!m_Decos.TryGetValue(view, out var d))
                 {
@@ -192,18 +200,25 @@ namespace Kit.Editor
                     view.Add(d.Extras); view.Add(d.Glow);
                     m_Decos[view] = d;
                 }
+                if (!d.TooltipsSet) d.TooltipsSet = KitTooltips.Apply(node);
                 if (d.Extras.parent != view) { view.Add(d.Extras); view.Add(d.Glow); }
 
                 // Marker types (▶/◆) would show GTK's generic "01/10" type icon: hide it.
                 view.Query(className: "ge-port").ForEach(pv =>
                 {
-                    if (ModelOf(pv) is IPort ip && (ip.dataType == typeof(EventPort) || ip.dataType == typeof(RefPort)))
+                    if (!(ModelOf(pv) is IPort ip)) return;
+                    if (ip.dataType == typeof(EventPort) || ip.dataType == typeof(RefPort))
                         pv.Query(className: "ge-port__icon").ForEach(icon => icon.style.display = DisplayStyle.None);
+                    // [Hint] on the view itself too: GTK copies the model tooltip only on its next update of that port.
+                    var tip = KitTooltips.ForPort(node, ip);
+                    if (tip != null && pv.tooltip != tip) { pv.tooltip = tip; pv.Query<Label>().ForEach(l => l.tooltip = tip); }
                 });
 
                 // German title (GTK 0.4 always shows the class name).
-                string typeName = node.GetType().Name, title = node is KitEditorNode k2 ? k2.Schema.Title : "Objekt: " + ((ObjectNode)node).Label;
-                view.Query<Label>().ForEach(l => { if (l.text == typeName) l.text = title; });
+                string typeName = node.GetType().Name, title = TitleOf(node);
+                string nodeTip = node is KitEditorNode k2 ? k2.Schema.Tooltip : node is SelfNode ? SelfNode.Tip : ObjectNode.Tip;
+                view.Query<Label>().ForEach(l => { if (l.text == typeName || l.text == d.Title) { l.text = title; l.tooltip = nodeTip; } });
+                d.Title = title;
 
                 Chips(d, node, inst);
 
@@ -250,17 +265,22 @@ namespace Kit.Editor
                 d.Glow.style.backgroundColor = new Color(glow.r, glow.g, glow.b, highlighted ? 0.08f : 0.12f);
             }
 
-            void Chips(NodeDeco d, Node node, Interaction inst)
+            /// <summary>German title: the node's own, "Rolle: Tür" or "Dieses Objekt".</summary>
+            public static string TitleOf(Node n) => n is KitEditorNode k ? k.Schema.Title : n is ObjectNode o ? "Rolle: " + o.Label
+                                                   : n is SelfNode ? LogicGraph.SelfLabel : n?.GetType().Name;
+
+            void Chips(NodeDeco d, Node node, Logic inst)
             {
                 // Which ◆ inputs need a chip: those not wired to an Objekt node or an event value.
                 var wanted = new List<(string slot, string label, Type type)>();
                 if (node is ObjectNode on) wanted.Add((KitIds.Of(on), on.Label, typeof(GameObject)));
+                else if (node is SelfNode) wanted.Add((LogicGraph.SelfSlot, LogicGraph.SelfLabel, typeof(GameObject)));
                 else if (node is KitEditorNode k)
                     foreach (var r in k.Schema.Refs)
                     {
                         var port = node.GetInputPortByName(r.Id);
                         if (port == null || port.isConnected) continue;
-                        wanted.Add((KitGraph.InlineSlotId(KitIds.Of(node), r.Id), r.Label + (r.Optional ? " (optional)" : ""), r.Type));
+                        wanted.Add((LogicGraph.InlineSlotId(KitIds.Of(node), r.Id), r.Label + (r.Optional ? " (optional)" : ""), r.Type));
                     }
                 string sig = (inst ? inst.GetInstanceID() : 0) + "|" + string.Join(";", wanted.Select(w => w.slot));
                 if (sig != d.ChipSignature)
@@ -272,8 +292,9 @@ namespace Kit.Editor
                         var field = new ObjectField("◆ " + w.label) { objectType = w.type == typeof(GameObject) ? typeof(GameObject) : w.type, allowSceneObjects = true };
                         field.AddToClassList("kit-chip");
                         string slot = w.slot;
-                        field.SetEnabled(inst != null);
-                        field.tooltip = inst ? "Objekt aus der Hierarchy hierher ziehen" : "Zuerst eine Instanz wählen";
+                        bool self = slot == LogicGraph.SelfSlot;
+                        field.SetEnabled(inst != null && !self);   // Dieses Objekt is never bound by hand
+                        field.tooltip = self ? "Das Objekt mit der Logik-Komponente. Steht fest." : inst ? "Objekt aus der Hierarchy hierher ziehen" : "Zuerst eine Logik wählen (Knopf unten links)";
                         field.RegisterValueChangedCallback(e => { var i = Instance; if (i) KitBinding.Set(i, slot, e.newValue); });
                         d.Chips.Add(field); d.Fields.Add((field, slot));
                     }
@@ -282,7 +303,7 @@ namespace Kit.Editor
                 {
                     if (!inst) continue;
                     var bound = inst.GetBinding(slot);
-                    var shown = Interaction.Convert(bound, field.objectType) ?? (bound != null ? bound : null);
+                    var shown = Logic.Convert(bound, field.objectType) ?? (bound != null ? bound : null);
                     if (field.value != shown) field.SetValueWithoutNotify(shown);
                     bool empty = shown == null && !field.label.EndsWith("(optional)");
                     field.EnableInClassList("kit-chip--empty", empty);
@@ -290,7 +311,7 @@ namespace Kit.Editor
             }
 
             // ---------------------------------------------------------------------------- wires
-            void DecorateWire(VisualElement view, object wire, Interaction inst)
+            void DecorateWire(VisualElement view, object wire, Logic inst)
             {
                 var control = Get(view, "WireControl") as VisualElement;
                 if (control == null) return;
@@ -345,7 +366,7 @@ namespace Kit.Editor
             }
 
             // ---------------------------------------------------------------------------- info bar
-            void ShowInfo(object selected, Interaction inst)
+            void ShowInfo(object selected, Logic inst)
             {
                 if (selected == null) { if (m_InfoFor != null) { m_Info.text = ""; m_InfoButtons.Clear(); m_InfoFor = null; } return; }
                 bool rebuildButtons = !ReferenceEquals(selected, m_InfoFor);
@@ -355,12 +376,13 @@ namespace Kit.Editor
                 else WireInfo(selected, inst, rebuildButtons);
             }
 
-            void NodeInfo(Node node, Interaction inst, bool buttons)
+            void NodeInfo(Node node, Logic inst, bool buttons)
             {
-                if (node is ObjectNode on)
+                if (node is ObjectNode || node is SelfNode)
                 {
-                    var bound = inst ? inst.GetBinding(KitIds.Of(on)) : null;
-                    m_Info.text = $"◆ Objekt „{on.Label}“ = {(bound ? bound.name : "leer")} · Doppelklick: in der Hierarchy zeigen";
+                    string slot = node is SelfNode ? LogicGraph.SelfSlot : KitIds.Of(node);
+                    var bound = inst ? inst.GetBinding(slot) : null;
+                    m_Info.text = $"◆ {TitleOf(node)} = {(bound ? bound.name : "leer")} · Doppelklick: in der Hierarchy zeigen";
                     if (buttons) Btn("In der Hierarchy zeigen", () => Reveal(node, false));
                     return;
                 }
@@ -384,16 +406,16 @@ namespace Kit.Editor
                 if (!buttons) return;
                 if (!helper) Btn("In der Hierarchy zeigen", () => Reveal(node, false));
                 if (!helper) Btn("Komponente öffnen", () => Reveal(node, true));
-                if (helper && inst) Btn("Interaktion zeigen", () => { Selection.activeGameObject = inst.gameObject; EditorGUIUtility.PingObject(inst.gameObject); });
+                if (helper && inst) Btn("Logik zeigen", () => { Selection.activeGameObject = inst.gameObject; EditorGUIUtility.PingObject(inst.gameObject); });
                 Btn("Code ansehen", () => KitCodeView.Show(k.RuntimeType));
             }
 
-            void WireInfo(object wire, Interaction inst, bool buttons)
+            void WireInfo(object wire, Logic inst, bool buttons)
             {
                 var fromPort = Get(wire, "FromPort") as IPort; var toPort = Get(wire, "ToPort") as IPort;
                 if (fromPort == null || toPort == null) { m_Info.text = ""; return; }
                 Node fromNode = fromPort.GetNode() as Node, toNode = toPort.GetNode() as Node;
-                string Title(Node n) => n is KitEditorNode k ? k.Schema.Title : n is ObjectNode o ? "Objekt „" + o.Label + "“" : n?.GetType().Name;
+                string Title(Node n) => TitleOf(n);
                 string kind = fromPort.dataType == typeof(EventPort) ? "▶ Event" : fromPort.dataType == typeof(RefPort) ? "◆ Referenz" : "● Daten";
                 string text = $"Draht {kind}: {Title(fromNode)} · {fromPort.displayName}  →  {Title(toNode)} · {toPort.displayName}";
                 string fn = KitIds.Of(fromNode), tn = KitIds.Of(toNode);
@@ -423,7 +445,7 @@ namespace Kit.Editor
             void Reorder(string fn, string fp, string tn, string tp, int newOrder)
             {
                 var graphObject = KitGraphEditing.GraphObjectOf(m_Graph);
-                if (graphObject) Undo.RecordObject(graphObject, "Kit: Reihenfolge ändern");
+                if (graphObject) Undo.RecordObject(graphObject, KitBrand.Name + ": Reihenfolge ändern");
                 m_Graph.SetOrder(fn, fp, tn, tp, newOrder);
                 KitGraphEditing.Save(m_Graph);
                 m_InfoFor = null;
@@ -441,13 +463,29 @@ namespace Kit.Editor
 
             public void FlashSlot(string slot) { m_FlashSlot = slot; m_FlashUntil = EditorApplication.timeSinceStartup + 2.0; }
 
+            static readonly MethodInfo s_FrameElement = Type.GetType("Unity.GraphToolkit.Editor.GraphViewEditorWindow, Unity.GraphToolkit.Internal.Editor")
+                ?.GetMethod("FrameGraphElement", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+            /// <summary>Scrolls to the first node that uses this role and selects it (GTK's own "frame" command). False if not possible.</summary>
+            public bool FrameSlot(string slot)
+            {
+                var node = m_Graph?.GetNodes().OfType<Node>().FirstOrDefault(n => IsKitNode(n) && SlotsOf(n).Contains(slot));
+                if (node == null || s_FrameElement == null) return false;
+                try
+                {
+                    s_FrameElement.Invoke(null, new object[] { Hash128.Parse(KitIds.Of(node)), Window, null });
+                    return true;
+                }
+                catch (Exception e) { if (KitGtkBridge.Verbose) Debug.LogException(e); return false; }
+            }
+
             // ---------------------------------------------------------------------------- navigation
             void OnMouseDown(MouseDownEvent evt)
             {
                 if (evt.clickCount != 2 || evt.button != 0) return;
                 for (var ve = evt.target as VisualElement; ve != null; ve = ve.parent)
                 {
-                    if (Get(ModelOf(ve), "Node") is Node n && (n is KitEditorNode || n is ObjectNode))
+                    if (Get(ModelOf(ve), "Node") is Node n && IsKitNode(n))
                     {
                         if (Reveal(n, evt.shiftKey)) evt.StopPropagation();
                         return;
@@ -459,11 +497,11 @@ namespace Kit.Editor
             public bool Reveal(Node n, bool ownInspector)
             {
                 var inst = Instance;
-                if (!inst) { m_Info.text = "Zuerst eine Instanz wählen (Knopf unten links): Welche Interaktion in der Szene ist gemeint?"; return false; }
+                if (!inst) { m_Info.text = "Zuerst eine Logik wählen (Knopf unten links): Welche Logik in der Szene ist gemeint?"; return false; }
                 var k = n as KitEditorNode;
                 if (k != null && k.Schema.Refs.Count == 0)
                 {
-                    Selection.activeGameObject = inst.gameObject;     // helper nodes live in the interaction
+                    Selection.activeGameObject = inst.gameObject;     // helper nodes live in the Logik
                     EditorGUIUtility.PingObject(inst.gameObject);
                     return true;
                 }
@@ -490,34 +528,34 @@ namespace Kit.Editor
             IEnumerable<(string slot, Type type)> SlotsWithTypes(Node n)
             {
                 if (n is ObjectNode) { yield return (KitIds.Of(n), typeof(GameObject)); yield break; }
+                if (n is SelfNode) { yield return (LogicGraph.SelfSlot, typeof(GameObject)); yield break; }
                 if (n is KitEditorNode k) foreach (var r in k.Schema.Refs) yield return (SlotOf(n, r.Id), r.Type);
             }
 
-            /// <summary>Hierarchy → graph: choosing an Interaction picks the instance; any other object lights up the nodes that use it.</summary>
+            /// <summary>Hierarchy → graph: choosing a Logic picks the instance; any other object lights up the nodes that use it.</summary>
             public void HierarchySelectionChanged()
             {
                 var go = Selection.activeGameObject;
                 m_HighlightSlots = new HashSet<string>();
                 if (!go || !m_Runtime) return;
-                var it = go.GetComponents<Interaction>().FirstOrDefault(i => i.Graph == m_Runtime);
+                var it = go.GetComponents<Logic>().FirstOrDefault(i => i.Graph == m_Runtime);
                 if (it) { KitInstances.Select(Path, it); return; }
                 var inst = Instance;
                 if (inst) m_HighlightSlots = new HashSet<string>(KitBinding.SlotsUsing(inst, go));
-                if (KitTrace.LogToConsole || KitGtkBridge.Verbose) Debug.Log($"[Kit] Auswahl {go.name}: inst={(inst ? inst.name : "-")} slots={string.Join(",", m_HighlightSlots)}");
+                if (KitTrace.LogToConsole || KitGtkBridge.Verbose) Debug.Log($"{KitBrand.Log}Auswahl {go.name}: inst={(inst ? inst.name : "-")} slots={string.Join(",", m_HighlightSlots)}");
             }
 
             // ---------------------------------------------------------------------------- creating nodes
-            static readonly string[] k_GroupOrder = { "Auslöser", "Ablauf", "Zustand", "Aktion", "Spielsysteme", "Erweiterung" };
-
             void ShowPalette()
             {
                 var menu = new GenericMenu();
                 var types = TypeCache.GetTypesDerivedFrom<KitEditorNode>()   // also faces from optional assemblies (Cinemachine)
                     .Where(t => !t.IsAbstract)
                     .Select(t => (type: t, schema: ((KitEditorNode)Activator.CreateInstance(t)).Schema))
-                    .OrderBy(x => Array.IndexOf(k_GroupOrder, x.schema.Group) is int i && i >= 0 ? i : 99).ThenBy(x => x.schema.Title);
+                    .OrderBy(x => KitGroups.IndexOf(x.schema.Group)).ThenBy(x => x.schema.Title);
                 var at = KitGtkCommands.CanvasCentre(Window);
-                menu.AddItem(new GUIContent("Objekt (◆ für mehrere Knoten)"), false, () => CreateNode(typeof(ObjectNode), at));
+                menu.AddItem(new GUIContent("Dieses Objekt (◆ das Objekt mit der Logik)"), false, () => CreateNode(typeof(SelfNode), at));
+                menu.AddItem(new GUIContent("Rolle (◆ ein Objekt für mehrere Knoten)"), false, () => CreateNode(typeof(ObjectNode), at));
                 menu.AddSeparator("");
                 foreach (var t in types)
                 {
@@ -579,18 +617,26 @@ namespace Kit.Editor
             void PickInstance()
             {
                 var menu = new GenericMenu();
-                var list = m_Runtime ? KitBinding.InstancesOf(m_Runtime) : Array.Empty<Interaction>();
+                var list = m_Runtime ? KitBinding.InstancesOf(m_Runtime) : Array.Empty<Logic>();
                 foreach (var it in list)
                 {
                     var i = it;
                     menu.AddItem(new GUIContent(PathName(i.transform)), i == Instance, () => KitInstances.Select(Path, i));
                 }
                 if (list.Length > 0) menu.AddSeparator("");
-                menu.AddItem(new GUIContent("Neue Interaktion in der Szene mit diesem Graph"), false, () =>
+                var sel = Selection.activeGameObject;
+                if (sel && sel.scene.IsValid())
+                    menu.AddItem(new GUIContent($"Logik mit diesem Graph auf „{sel.name}“ legen"), false, () =>
+                    {
+                        var it = KitWindows.AddLogic(sel);
+                        KitBinding.AssignGraph(it, m_Runtime);
+                        KitInstances.Select(Path, it);
+                    });
+                menu.AddItem(new GUIContent("Neues Objekt mit Logik und diesem Graph"), false, () =>
                 {
                     var go = new GameObject(System.IO.Path.GetFileNameWithoutExtension(Path));
-                    Undo.RegisterCreatedObjectUndo(go, "Kit: Interaktion anlegen");
-                    var it = Undo.AddComponent<Interaction>(go);
+                    Undo.RegisterCreatedObjectUndo(go, KitBrand.Name + ": Logik anlegen");
+                    var it = Undo.AddComponent<Logic>(go);
                     KitBinding.AssignGraph(it, m_Runtime);
                     KitInstances.Select(Path, it);
                     Selection.activeGameObject = go;
