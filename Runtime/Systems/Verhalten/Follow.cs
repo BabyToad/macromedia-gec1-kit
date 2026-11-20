@@ -12,8 +12,10 @@ namespace Kit
         [Hint("Wem die Figur folgt.", edges: "Leer: dem, was die Wahrnehmung beobachtet, normalerweise dem Spieler.", label: "Ziel")]
         public Transform target;
 
-        [Hint("Abstand, den die Figur hält; hier bleibt sie stehen.", unit: "m", range: "0,5 bis 4", edges: "Klein: dicht dran. Groß: mit Respekt.", label: "Abstand halten")]
-        [Min(0f)] public float keepDistance = 1.5f;
+        [Hint("Abstand von Mitte zu Mitte, den die Figur hält; hier bleibt sie stehen. Bis etwa 1 m holt sie den Spieler ein, " +
+              "und die Wahrnehmung meldet „Berührt“ (zum Fangen).", unit: "m", range: "0,5 bis 4",
+              edges: "Klein: holt ein, „Berührt“ feuert. Groß: Begleiter mit Respekt.", label: "Abstand halten")]
+        [Min(0f)] public float keepDistance = 0.5f;
 
         [Hint("Erst wenn das Ziel um so viel weiter weg ist, läuft die Figur wieder los. Verhindert Zappeln.", unit: "m", range: "0,5 bis 3", edges: "0: läuft bei jedem Schritt mit. Groß: gemächlicher Begleiter.", label: "Losgehen ab")]
         [Min(0f)] public float slack = 1f;
@@ -25,25 +27,30 @@ namespace Kit
 
         public override BehaviourKind Kind => BehaviourKind.Folgen;
 
-        bool m_Chasing;
+        bool m_Chasing, m_Arrived, m_Sent;
         float m_NextRepath;
+        Transform m_LastTarget;
 
         public Transform Target => OrWatched(target);
 
-        protected override void Begin() { m_Chasing = false; m_NextRepath = 0f; }
+        protected override void Begin() { m_Chasing = m_Arrived = false; m_NextRepath = 0f; m_LastTarget = null; }
 
         protected override void Tick()
         {
             var t = Target;
+            if (t != m_LastTarget) { m_LastTarget = t; m_Chasing = m_Arrived = false; }   // a new target is a new first approach (Astra #16 r2)
             if (t == null) { Say("kein Ziel zum Folgen"); Halt(); return; }
             float d = Vector3.Distance(Flat(transform.position), Flat(t.position));
-            if (!m_Chasing && d > keepDistance + slack) m_Chasing = true;
+            // The first approach starts at any distance beyond keepDistance (a chaser 1,3 m away must not just stand there,
+            // Astra #16); the slack only keeps a figure that has arrived from fidgeting at every step of the target.
+            if (!m_Chasing && d > keepDistance + (m_Arrived ? slack : 0.1f)) { m_Chasing = true; m_Sent = false; }
             if (m_Chasing)
             {
                 // Close enough, or at the spot beside the target and within the slack (the agent stops a bit early).
-                if (d <= keepDistance + 0.1f || (AtDestination && d <= keepDistance + slack))
+                // AtDestination only counts once this chase has sent the figure somewhere: before that it reads true (no destination).
+                if (d <= keepDistance + 0.1f || (m_Sent && AtDestination && d <= keepDistance + slack))
                 {
-                    m_Chasing = false;
+                    m_Chasing = false; m_Arrived = true;
                     Halt();
                     Say("bei {2} ({0:0.0} m)", d, 0f, t);
                     ReachedGoal();
@@ -54,7 +61,7 @@ namespace Kit
                     m_NextRepath = Time.time + 0.2f;
                     // Aim at the point keepDistance short of the target, so the figure stops beside it, not inside.
                     var to = Flat(t.position - transform.position);
-                    GoTo(t.position - to.normalized * keepDistance);
+                    if (GoTo(t.position - to.normalized * keepDistance)) m_Sent = true;   // a failed GoTo leaves no destination
                 }
                 Say("folgt {2} ({0:0.0} m)", d, 0f, t);
                 return;

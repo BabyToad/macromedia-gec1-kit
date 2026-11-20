@@ -2,6 +2,17 @@
 
 All notable changes to `de.macromedia.gec1`. Versions follow SemVer; tags are vX.Y.Z.
 
+## [0.5.1] - 2026-11-20
+
+Korrekturen aus dem Probespielen am 20.11.2026. Nichts muss angepasst werden.
+
+### Behoben
+- Eine **Bildstimmungs-Zone** aus **GameObject › Besteck › Atmosphäre** bekam kein Profil, und in der Zone änderte sich nichts. Jetzt bekommt sie gleich die Vorlage „Traum“, und ein Strg+Z nimmt die ganze Zone zurück. Fehlt einer Zone das Profil, sagt es der Inspector; **Vorlage › Anwenden** behebt es
+- **Folgen** hält jetzt 0,5 m Abstand statt 1,5 m: Eine Figur, die den Spieler verfolgt, holt ihn ein, und **Berührt** feuert. Steht sie beim Einschalten schon nah beim Spieler, läuft sie trotzdem los. Wer einen Begleiter mit Abstand will, stellt **Abstand halten** höher. Schon angelegte Figuren behalten ihren Wert
+
+### So aktualisieren
+- Im Package Manager die Adresse mit `#v0.5.1` eintragen (Anleitung „Kurs-Paket aktualisieren“). Von 0.5.0 aus fragt Unity nichts; vorher committen, danach committen
+
 ## [0.5.0] - 2026-10-23
 
 Das Kurs-Paket heißt jetzt **Besteck**. Diese Version bringt alles für Tag 3 und Tag 4 auf einmal: Logik

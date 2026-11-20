@@ -1,5 +1,6 @@
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -121,10 +122,15 @@ namespace Kit.Editor
         static void Grain(VolumeProfile p, FilmGrainLookup type, float intensity) { var c = Add<FilmGrain>(p); Set(c.type, type); Set(c.intensity, intensity); }
 
         /// <summary>Makes sure the scene's main camera shows post-processing (URP leaves it off on new cameras).</summary>
-        public static void EnablePostOnMainCamera()
+        public static void EnablePostOnMainCamera() => EnablePostOnMainCamera(null);
+
+        /// <summary>As above, but only when the main camera is in <paramref name="near"/>'s scene and not in Prefab Mode,
+        /// so adding a zone never edits another (additively loaded) scene's camera.</summary>
+        public static void EnablePostOnMainCamera(GameObject near)
         {
+            if (near && PrefabStageUtility.GetPrefabStage(near) != null) return;
             var cam = Camera.main;
-            if (!cam) return;
+            if (!cam || near && cam.gameObject.scene != near.scene) return;
             var data = cam.GetUniversalAdditionalCameraData();
             if (data && !data.renderPostProcessing)
             {
@@ -157,14 +163,19 @@ namespace Kit.Editor
         [MenuItem(KitBrand.GameObjectMenu + "Atmosphäre/Bildstimmungs-Zone", false, 30)]
         static void CreateZone(MenuCommand cmd)
         {
+            Undo.IncrementCurrentGroup();
+            Undo.SetCurrentGroupName("Bildstimmungs-Zone");
+            int group = Undo.GetCurrentGroup();
             var go = new GameObject("Bildstimmungs-Zone");
             GameObjectUtility.SetParentAndAlign(go, cmd.context as GameObject);
             var sv = SceneView.lastActiveSceneView;
             if (sv && !(cmd.context as GameObject)) go.transform.position = sv.pivot;
             Undo.RegisterCreatedObjectUndo(go, go.name);
             var box = go.AddComponent<BoxCollider>(); box.isTrigger = true; box.size = new Vector3(6f, 3f, 6f); box.center = new Vector3(0f, 1.5f, 0f);
-            Undo.AddComponent<MoodZone>(go);
+            // Undo.AddComponent does not raise ObjectFactory.componentWasAdded, so give the profile here as well.
+            MoodZoneAdded.Prepare(Undo.AddComponent<MoodZone>(go));
             Selection.activeGameObject = go;
+            Undo.CollapseUndoOperations(group);   // one Strg+Z takes the zone back, not only the look (Astra #16)
         }
     }
 
@@ -172,13 +183,16 @@ namespace Kit.Editor
     [InitializeOnLoad]
     static class MoodZoneAdded
     {
-        static MoodZoneAdded() => ObjectFactory.componentWasAdded += c =>
+        static MoodZoneAdded() => ObjectFactory.componentWasAdded += c => { if (c is MoodZone z) Prepare(z); };
+
+        /// <summary>Gives the zone's Volume the Traum profile if it has none, and turns post-processing on at the main camera.</summary>
+        internal static void Prepare(MoodZone z)
         {
-            if (Application.isPlaying || !(c is MoodZone z)) return;
+            if (Application.isPlaying || !z) return;
             var v = z.GetComponent<Volume>();
             if (v && !v.sharedProfile) { v.sharedProfile = MoodSetup.CreateProfile(MoodSetup.Look.Dream); EditorUtility.SetDirty(v); }
-            MoodSetup.EnablePostOnMainCamera();
-        };
+            MoodSetup.EnablePostOnMainCamera(z.gameObject);
+        }
     }
 
     [CustomEditor(typeof(MoodZone))]
@@ -195,6 +209,8 @@ namespace Kit.Editor
             ZoneInspector.Status(z);
             EditorGUILayout.HelpBox("In der Zone blendet die Volume darunter ein, draußen wieder aus. Den Look stellt ihr Profil ein (Color Adjustments, Vignette, Bloom …).", MessageType.None);
             DrawDefaultInspector();
+            if (v && !v.sharedProfile)
+                EditorGUILayout.HelpBox("Die Volume hat noch kein Profil: In der Zone ändert sich nichts. Unten eine Vorlage wählen und „Anwenden“.", MessageType.Warning);
 
             EditorGUILayout.Space();
             using (new EditorGUILayout.HorizontalScope())
@@ -213,7 +229,8 @@ namespace Kit.Editor
                 bool want = GUILayout.Toggle(on, new GUIContent("Vorschau in der Scene- und Game-Ansicht", "Zeigt den Look jetzt schon, ohne Play. Geht beim Abwählen wieder aus."), "Button");
                 if (want != on) Preview(want ? z : null);
             }
-            if (Camera.main && Camera.main.GetUniversalAdditionalCameraData() is var d && d && !d.renderPostProcessing)
+            // TryGetComponent: GetUniversalAdditionalCameraData would add the component to the camera just by drawing (Astra #16 r2).
+            if (Camera.main && Camera.main.TryGetComponent(out UniversalAdditionalCameraData d) && !d.renderPostProcessing)
             {
                 EditorGUILayout.HelpBox("Die Hauptkamera zeigt kein Post-Processing.", MessageType.Warning);
                 if (GUILayout.Button("Post Processing an der Hauptkamera einschalten")) MoodSetup.EnablePostOnMainCamera();
