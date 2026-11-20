@@ -1,6 +1,6 @@
 {
   "name": "de.macromedia.gec1",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "displayName": "Besteck – Kurs-Paket GEC1",
   "description": "Kurs-Paket für Game Engines & Coding 1 (Hochschule Macromedia, Leipzig): Setup-Check (Kurs > Setup prüfen), Spieler-Controller (Prefab Spieler), Logik und Rollen (Laufzeit), Logik-Graph-Editor, Beispiel Werkstatt (kaputt).",
   "unity": "6000.3",

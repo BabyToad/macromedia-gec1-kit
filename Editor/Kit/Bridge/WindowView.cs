@@ -71,7 +71,7 @@ namespace Kit.Editor
                 Root.RegisterCallback<DragPerformEvent>(OnDragPerform);
                 // Variables (Blackboard) are not part of the kit; its panel would only cover the canvas.
                 if (w.TryGetOverlay("gtf-blackboard", out var blackboard)) blackboard.displayed = false;
-                if (GtkFieldsBroken) ShowNotice(GtkBrokenMessage);
+                if (GtkSelfHeal.Needed) ShowNotice(GtkBrokenMessage);
                 else if (!ReflectionOk) ShowNotice("Beobachtung im Graph nicht verfügbar (GTK-Interna fehlen). Zustand und Rollen: Inspector der Logik.");
             }
 

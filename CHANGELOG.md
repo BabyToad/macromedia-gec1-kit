@@ -2,6 +2,16 @@
 
 All notable changes to `de.macromedia.gec1`. Versions follow SemVer; tags are vX.Y.Z.
 
+## [0.5.3] - 2026-11-20
+
+Korrektur am 20.11.2026 für neuere Unity-Versionen. Für Unity 6000.3.15f1 ändert sich nichts.
+
+### Behoben
+- Auf Unity-Versionen neuer als 6000.3.15f1 zeichnete das Graph-Werkzeug keine Knoten mit Einstellungen und meldete viele rote Fehler. Besteck erkennt das jetzt und bietet an, das Graph-Werkzeug im Projekt zu reparieren: Eine korrigierte Kopie kommt in den Ordner `Packages/besteck-graphtoolkit` (etwa 10 MB). Nachholen über **Tools › Besteck › Graph-Werkzeug reparieren (neuere Unity-Version)**. Danach committen. Rückgängig: den Ordner löschen
+
+### So aktualisieren
+- Im Package Manager die Adresse mit `#v0.5.3` eintragen (Anleitung „Kurs-Paket aktualisieren“). Auf einer neueren Unity-Version danach „Reparieren“ wählen und committen
+
 ## [0.5.2] - 2026-11-20
 
 Korrektur am 20.11.2026. Nichts muss angepasst werden.

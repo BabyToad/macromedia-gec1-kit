@@ -34,7 +34,7 @@ namespace Kit.Editor
         public override void OnInspectorGUI()
         {
             s_Wrap ??= new GUIStyle(EditorStyles.miniLabel) { wordWrap = true, richText = true };
-            if (KitGtkBridge.GtkFieldsBroken) EditorGUILayout.HelpBox(KitGtkBridge.GtkBrokenMessage, MessageType.Error);
+            if (GtkSelfHeal.Needed) EditorGUILayout.HelpBox(KitGtkBridge.GtkBrokenMessage, MessageType.Error);
             serializedObject.Update();
             using (new EditorGUILayout.HorizontalScope())
             {

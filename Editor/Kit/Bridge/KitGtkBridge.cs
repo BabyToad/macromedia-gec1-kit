@@ -46,8 +46,8 @@ namespace Kit.Editor
 
         public const string GtkBrokenMessage =
             "Diese Unity-Version passt nicht zum Graph-Werkzeug: Knoten mit Einstellungen werden nicht gezeichnet. " +
-            "Für den Kurs Unity 6000.3.15f1 verwenden (Unity Hub › Installs). Spielen funktioniert trotzdem; " +
-            "Rollen lassen sich im Inspector der Logik binden.";
+            "Reparieren: Tools › Besteck › Graph-Werkzeug reparieren (neuere Unity-Version), danach committen. " +
+            "Oder für den Kurs Unity 6000.3.15f1 verwenden (Unity Hub › Installs).";
 
         static readonly Dictionary<EditorWindow, WindowView> s_Windows = new Dictionary<EditorWindow, WindowView>();
         static double s_Next;
