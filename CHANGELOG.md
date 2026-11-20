@@ -2,6 +2,16 @@
 
 All notable changes to `de.macromedia.gec1`. Versions follow SemVer; tags are vX.Y.Z.
 
+## [0.5.2] - 2026-11-20
+
+Korrektur am 20.11.2026. Nichts muss angepasst werden.
+
+### Behoben
+- Ein Logik-Graph mit dem Knoten **Farbe** brach beim Öffnen mit roten Meldungen ab („CreateImpl is not allowed to be called during serialization“, „The type initializer for 'Kit.ColorChange' threw an exception“), und Farbe meldete im Play „Fehler im Code“. Jetzt lädt der Knoten normal
+
+### So aktualisieren
+- Im Package Manager die Adresse mit `#v0.5.2` eintragen (Anleitung „Kurs-Paket aktualisieren“). Vorher committen, danach Unity einmal neu starten, falls die Meldungen schon da waren
+
 ## [0.5.1] - 2026-11-20
 
 Korrekturen aus dem Probespielen am 20.11.2026. Nichts muss angepasst werden.

@@ -44,7 +44,10 @@ namespace Kit
 
         [Hint("Kommt, wenn die Farbe angekommen ist (beim Blitz: wenn er abgeklungen ist).")] [Output("Fertig")] [NonSerialized] public Output done;
 
-        static readonly MaterialPropertyBlock s_Block = new MaterialPropertyBlock();
+        // Created on first use, not in a static initializer: the graph deserializes this node class, and Unity forbids
+        // creating a MaterialPropertyBlock during serialization (the type would then fail for the whole session).
+        static MaterialPropertyBlock s_BlockInstance;
+        static MaterialPropertyBlock s_Block => s_BlockInstance ??= new MaterialPropertyBlock();
 
         // Die Farbe, zu der ein Blitz zurückkehrt: das Ziel des letzten „Ändern“ (oder die Startfarbe).
         static readonly Dictionary<(Renderer, string), Color> s_Rest = new Dictionary<(Renderer, string), Color>();
